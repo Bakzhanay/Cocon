@@ -301,3 +301,12 @@ class FocusAnalyticsTests(TestCase):
     def test_dashboard_links_to_full_analytics(self):
         response = self.client.get(reverse("topics:home"))
         self.assertContains(response, reverse("topics:analytics"))
+
+    def test_empty_sidebar_explains_how_to_add_the_first_topic(self):
+        self.topic.delete()
+
+        response = self.client.get(reverse("topics:home"))
+
+        self.assertContains(response, "No topics added yet")
+        self.assertContains(response, "Create your first topic")
+        self.assertContains(response, reverse("topics:add_topic"))

@@ -505,6 +505,24 @@ html.dark-mode .quick-notes-empty {
     color: var(--text);
 }
 
+html.dark-mode .sidebar-empty-topics {
+    border-color: #465049;
+    background: #202622;
+}
+
+html.dark-mode .sidebar-empty-topics > span {
+    background: #314039;
+    color: #acd0c5;
+}
+
+html.dark-mode .sidebar-empty-topics strong {
+    color: var(--dark-heading);
+}
+
+html.dark-mode .sidebar-empty-topics p {
+    color: var(--dark-muted);
+}
+
 html.dark-mode .quick-note-card.is-pinned {
     border-color: #587368;
     background: #293a34;

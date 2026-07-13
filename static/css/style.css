@@ -895,6 +895,66 @@ body{
 
 }
 
+.sidebar-empty-topics{
+
+    padding:18px 14px;
+
+    border:1px dashed var(--border);
+
+    border-radius:14px;
+
+    background:rgba(244,243,239,.62);
+
+    text-align:center;
+
+}
+
+.sidebar-empty-topics > span{
+
+    width:30px;
+
+    height:30px;
+
+    display:grid;
+
+    place-items:center;
+
+    margin:0 auto 10px;
+
+    border-radius:9px;
+
+    background:#e2e9e5;
+
+    color:#5d7d74;
+
+    font-size:16px;
+
+    font-weight:800;
+
+}
+
+.sidebar-empty-topics strong{
+
+    display:block;
+
+    color:var(--text);
+
+    font-size:12px;
+
+}
+
+.sidebar-empty-topics p{
+
+    margin:6px 0 0;
+
+    color:var(--secondary);
+
+    font-size:10px;
+
+    line-height:1.5;
+
+}
+
 .brand-icon{
 
     display:block;

@@ -13,7 +13,7 @@
 
     <link rel="icon" type="image/png" sizes="64x64" href="{% static 'images/cocon-logo.png' %}">
 
-    <link rel="stylesheet" href="{% static 'css/style.css' %}?v=5">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}?v=6">
 
     <link rel="stylesheet" href="{% static 'css/right_panel.css' %}">
 
@@ -201,6 +201,14 @@
 </div>
 
 {% endfor %}
+
+            {% else %}
+
+                <div class="sidebar-empty-topics">
+                    <span aria-hidden="true">＋</span>
+                    <strong>No topics added yet</strong>
+                    <p>Create your first topic to start organizing what you want to learn.</p>
+                </div>
 
             {% endif %}
 
