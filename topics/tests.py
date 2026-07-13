@@ -8,6 +8,7 @@ from django.utils import timezone
 
 from flashcards.models import Flashcard
 from study.models import StudySession
+from users.models import UserPreferences
 
 from .models import Section, Subject, Topic
 
@@ -120,6 +121,64 @@ class DashboardAndSearchTests(TestCase):
         sidebar_topics = list(dashboard.context["sidebar_topics"])
         self.assertEqual(sidebar_topics[0], pinned_topic)
         self.assertIn(first_topic, sidebar_topics)
+
+    def test_dashboard_widget_can_be_pinned_to_the_top_and_unpinned(self):
+        toggle_url = reverse(
+            "topics:toggle_dashboard_widget",
+            args=["tasks", "pin"],
+        )
+
+        response = self.client.post(toggle_url)
+
+        self.assertRedirects(response, reverse("topics:home"))
+        preferences = UserPreferences.objects.get(user=self.user)
+        self.assertEqual(preferences.dashboard_pinned_widgets, ["tasks"])
+
+        dashboard = self.client.get(reverse("topics:home"))
+        html = dashboard.content.decode()
+        widget_marker = 'data-dashboard-widget="tasks"'
+        self.assertEqual(html.count(widget_marker), 1)
+        self.assertLess(html.index(widget_marker), html.index("Focus time"))
+        self.assertContains(dashboard, "Pinned for you")
+
+        self.client.post(toggle_url)
+        preferences.refresh_from_db()
+        self.assertEqual(preferences.dashboard_pinned_widgets, [])
+
+    def test_dashboard_widget_can_be_expanded_and_compacted(self):
+        toggle_url = reverse(
+            "topics:toggle_dashboard_widget",
+            args=["quick_notes", "expand"],
+        )
+
+        self.client.post(toggle_url)
+
+        preferences = UserPreferences.objects.get(user=self.user)
+        self.assertEqual(preferences.dashboard_expanded_widgets, ["quick_notes"])
+        dashboard = self.client.get(reverse("topics:home"))
+        self.assertContains(
+            dashboard,
+            "dashboard-panel dashboard-widget quick-notes-panel is-expanded",
+        )
+        self.assertContains(dashboard, "Use compact Quick notes size")
+
+        self.client.post(toggle_url)
+        preferences.refresh_from_db()
+        self.assertEqual(preferences.dashboard_expanded_widgets, [])
+
+    def test_dashboard_widget_controls_reject_unknown_values(self):
+        unknown_widget = reverse(
+            "topics:toggle_dashboard_widget",
+            args=["calendar", "pin"],
+        )
+        unknown_preference = reverse(
+            "topics:toggle_dashboard_widget",
+            args=["tasks", "hide"],
+        )
+
+        self.assertEqual(self.client.post(unknown_widget).status_code, 400)
+        self.assertEqual(self.client.post(unknown_preference).status_code, 400)
+        self.assertEqual(self.client.get(unknown_widget).status_code, 405)
 
 
 class FocusAnalyticsTests(TestCase):

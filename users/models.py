@@ -11,6 +11,8 @@ class UserPreferences(models.Model):
     timezone = models.CharField(max_length=64, default="UTC")
     daily_focus_goal_minutes = models.PositiveIntegerField(default=90)
     weekly_focus_goal_minutes = models.PositiveIntegerField(default=450)
+    dashboard_pinned_widgets = models.JSONField(default=list, blank=True)
+    dashboard_expanded_widgets = models.JSONField(default=list, blank=True)
 
     def __str__(self):
         return f"Preferences for {self.user}"

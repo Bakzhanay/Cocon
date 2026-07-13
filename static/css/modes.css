@@ -540,6 +540,28 @@ html.dark-mode .quick-note-card time {
     color: var(--dark-muted);
 }
 
+html.dark-mode .dashboard-section-label {
+    color: #9fc2b7;
+}
+
+html.dark-mode .dashboard-widget.is-pinned {
+    border-color: #57736a;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, .18);
+}
+
+html.dark-mode .dashboard-widget-control {
+    border-color: var(--dark-border);
+    background: #252b28;
+    color: #bdc5c0;
+}
+
+html.dark-mode .dashboard-widget-control:hover,
+html.dark-mode .dashboard-widget-control.is-active {
+    border-color: #658177;
+    background: #33443e;
+    color: #c6e1d8;
+}
+
 html.dark-mode .quick-note-actions .delete-action {
     border-color: #704a42;
     background: #472f2a;

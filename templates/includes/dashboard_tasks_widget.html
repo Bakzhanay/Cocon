@@ -1,0 +1,42 @@
+<section
+    class="dashboard-panel dashboard-widget planner-panel{% if "tasks" in pinned_dashboard_widgets %} is-pinned{% endif %}{% if "tasks" in expanded_dashboard_widgets %} is-expanded{% endif %}"
+    data-dashboard-widget="tasks"
+>
+    <div class="panel-heading dashboard-widget-heading">
+        <div><span class="dashboard-eyebrow">Plan the next step</span><h2>To-do list</h2></div>
+        <div class="dashboard-widget-actions">
+            <form method="post" action="{% url 'topics:toggle_dashboard_widget' 'tasks' 'pin' %}">
+                {% csrf_token %}
+                <button class="dashboard-widget-control{% if "tasks" in pinned_dashboard_widgets %} is-active{% endif %}" type="submit" aria-label="{% if "tasks" in pinned_dashboard_widgets %}Unpin To-do list from the top of the dashboard{% else %}Pin To-do list to the top of the dashboard{% endif %}" title="{% if "tasks" in pinned_dashboard_widgets %}Unpin from top{% else %}Pin to top{% endif %}">
+                    <span aria-hidden="true">&#128204;</span><span class="widget-control-label">{% if "tasks" in pinned_dashboard_widgets %}Unpin{% else %}Pin{% endif %}</span>
+                </button>
+            </form>
+            <form method="post" action="{% url 'topics:toggle_dashboard_widget' 'tasks' 'expand' %}">
+                {% csrf_token %}
+                <button class="dashboard-widget-control{% if "tasks" in expanded_dashboard_widgets %} is-active{% endif %}" type="submit" aria-label="{% if "tasks" in expanded_dashboard_widgets %}Use compact To-do list size{% else %}Expand To-do list{% endif %}" title="{% if "tasks" in expanded_dashboard_widgets %}Compact view{% else %}Expand widget{% endif %}">
+                    <span aria-hidden="true">&#x26F6;</span><span class="widget-control-label">{% if "tasks" in expanded_dashboard_widgets %}Compact{% else %}Expand{% endif %}</span>
+                </button>
+            </form>
+        </div>
+    </div>
+    <form action="{% url 'planner:add_task' %}" method="post" class="quick-task-form">
+        {% csrf_token %}
+        <input name="title" maxlength="220" placeholder="What needs to be done?" required>
+        <input name="due_date" type="date" aria-label="Due date">
+        <select name="priority" aria-label="Priority"><option value="normal">Normal</option><option value="high">High</option><option value="low">Low</option></select>
+        <button>Add</button>
+    </form>
+    {% if tasks %}
+        <div class="task-list">
+            {% for task in tasks %}
+                <div class="task-row {% if task.completed %}is-completed{% endif %} {% if task.due_date and task.due_date < today and not task.completed %}is-overdue{% endif %}">
+                    <form method="post" action="{% url 'planner:toggle_task' task.id %}">{% csrf_token %}<button class="task-check" aria-label="Toggle task">{% if task.completed %}&#10003;{% endif %}</button></form>
+                    <div><strong>{{ task.title }}</strong><span>{% if task.due_date %}{{ task.due_date|date:"M j" }}{% else %}No date{% endif %} &middot; {{ task.get_priority_display }}</span></div>
+                    <form method="post" action="{% url 'planner:delete_task' task.id %}">{% csrf_token %}<button class="task-delete" aria-label="Delete task">&times;</button></form>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="dashboard-empty compact"><p>No tasks yet. Add the next small step.</p></div>
+    {% endif %}
+</section>

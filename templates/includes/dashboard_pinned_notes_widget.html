@@ -1,0 +1,33 @@
+<section
+    class="dashboard-panel dashboard-widget pinned-panel{% if "pinned_notes" in pinned_dashboard_widgets %} is-pinned{% endif %}{% if "pinned_notes" in expanded_dashboard_widgets %} is-expanded{% endif %}"
+    data-dashboard-widget="pinned_notes"
+>
+    <div class="panel-heading dashboard-widget-heading">
+        <div><span class="dashboard-eyebrow">Keep in sight</span><h2>Pinned notes</h2></div>
+        <div class="dashboard-widget-actions">
+            <form method="post" action="{% url 'topics:toggle_dashboard_widget' 'pinned_notes' 'pin' %}">
+                {% csrf_token %}
+                <button class="dashboard-widget-control{% if "pinned_notes" in pinned_dashboard_widgets %} is-active{% endif %}" type="submit" aria-label="{% if "pinned_notes" in pinned_dashboard_widgets %}Unpin Pinned notes from the top of the dashboard{% else %}Pin Pinned notes to the top of the dashboard{% endif %}" title="{% if "pinned_notes" in pinned_dashboard_widgets %}Unpin from top{% else %}Pin to top{% endif %}">
+                    <span aria-hidden="true">&#128204;</span><span class="widget-control-label">{% if "pinned_notes" in pinned_dashboard_widgets %}Unpin{% else %}Pin{% endif %}</span>
+                </button>
+            </form>
+            <form method="post" action="{% url 'topics:toggle_dashboard_widget' 'pinned_notes' 'expand' %}">
+                {% csrf_token %}
+                <button class="dashboard-widget-control{% if "pinned_notes" in expanded_dashboard_widgets %} is-active{% endif %}" type="submit" aria-label="{% if "pinned_notes" in expanded_dashboard_widgets %}Use compact Pinned notes size{% else %}Expand Pinned notes{% endif %}" title="{% if "pinned_notes" in expanded_dashboard_widgets %}Compact view{% else %}Expand widget{% endif %}">
+                    <span aria-hidden="true">&#x26F6;</span><span class="widget-control-label">{% if "pinned_notes" in expanded_dashboard_widgets %}Compact{% else %}Expand{% endif %}</span>
+                </button>
+            </form>
+        </div>
+    </div>
+    {% if pinned_notes %}
+        <div class="pinned-note-list">
+            {% for note in pinned_notes %}
+                {% if note.subject %}<a href="{% url 'topics:subject_detail' note.subject.id %}">{% else %}<a href="{% url 'topics:section_detail' note.section.id %}">{% endif %}
+                    <span>Pinned</span><strong>{{ note.title }}</strong><p>{{ note.content|striptags|truncatechars:160 }}</p>
+                </a>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="dashboard-empty compact"><p>Pin an important note and it will stay here.</p></div>
+    {% endif %}
+</section>

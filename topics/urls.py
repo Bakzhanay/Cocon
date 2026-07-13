@@ -7,6 +7,11 @@ urlpatterns = [
     path("", views.dashboard, name="home"),
     path("analytics/", views.analytics, name="analytics"),
     path(
+        "dashboard/widgets/<slug:widget>/<slug:preference>/",
+        views.toggle_dashboard_widget,
+        name="toggle_dashboard_widget",
+    ),
+    path(
         "topics/add/",
         views.add_topic,
         name="add_topic",

@@ -8,6 +8,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.db.models import Count
+from django.http import HttpResponseBadRequest
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 
@@ -20,6 +21,17 @@ from planner.models import Task
 from users.models import UserPreferences
 
 from django.db.models import Q
+
+
+DASHBOARD_WIDGETS = ("tasks", "quick_notes", "pinned_notes")
+
+
+def _dashboard_widget_preferences(preferences, field_name):
+    """Return a clean, predictable list even if saved JSON was edited manually."""
+    saved_widgets = getattr(preferences, field_name, [])
+    if not isinstance(saved_widgets, list):
+        return []
+    return [widget for widget in DASHBOARD_WIDGETS if widget in saved_widgets]
 
 # Create your views here.
 @login_required
@@ -486,6 +498,14 @@ def search(request):
 @login_required
 def dashboard(request):
     preferences, _ = UserPreferences.objects.get_or_create(user=request.user)
+    pinned_dashboard_widgets = _dashboard_widget_preferences(
+        preferences,
+        "dashboard_pinned_widgets",
+    )
+    expanded_dashboard_widgets = _dashboard_widget_preferences(
+        preferences,
+        "dashboard_expanded_widgets",
+    )
     try:
         user_timezone = ZoneInfo(preferences.timezone)
     except ZoneInfoNotFoundError:
@@ -605,8 +625,37 @@ def dashboard(request):
         "quick_notes": QuickNote.objects.filter(owner=request.user).order_by("-is_pinned", "-updated_at")[:3],
         "tasks": Task.objects.filter(user=request.user).order_by("completed", "due_date", "-created_at")[:10],
         "today": today,
+        "pinned_dashboard_widgets": pinned_dashboard_widgets,
+        "expanded_dashboard_widgets": expanded_dashboard_widgets,
+        "has_pinned_dashboard_widgets": bool(pinned_dashboard_widgets),
+        "has_unpinned_dashboard_widgets": len(pinned_dashboard_widgets) < len(DASHBOARD_WIDGETS),
     }
     return render(request, "dashboard.html", context)
+
+
+@login_required
+@require_POST
+def toggle_dashboard_widget(request, widget, preference):
+    if widget not in DASHBOARD_WIDGETS or preference not in {"pin", "expand"}:
+        return HttpResponseBadRequest("Unknown dashboard widget preference.")
+
+    preferences, _ = UserPreferences.objects.get_or_create(user=request.user)
+    field_name = {
+        "pin": "dashboard_pinned_widgets",
+        "expand": "dashboard_expanded_widgets",
+    }[preference]
+    saved_widgets = _dashboard_widget_preferences(preferences, field_name)
+
+    if widget in saved_widgets:
+        saved_widgets.remove(widget)
+    else:
+        saved_widgets.append(widget)
+
+    # Keep the display order stable regardless of the order the controls were used.
+    saved_widgets = [item for item in DASHBOARD_WIDGETS if item in saved_widgets]
+    setattr(preferences, field_name, saved_widgets)
+    preferences.save(update_fields=[field_name])
+    return redirect("topics:home")
 
 
 @login_required

@@ -48,6 +48,17 @@
         </a>
     </section>
 
+    {% if has_pinned_dashboard_widgets %}
+    <section class="dashboard-pinned-widgets" aria-labelledby="pinned-widgets-title">
+        <div class="dashboard-section-label" id="pinned-widgets-title"><span aria-hidden="true">&#128204;</span> Pinned for you</div>
+        <div class="dashboard-pinned-grid">
+            {% if "tasks" in pinned_dashboard_widgets %}{% include "includes/dashboard_tasks_widget.html" %}{% endif %}
+            {% if "quick_notes" in pinned_dashboard_widgets %}{% include "includes/dashboard_quick_notes_widget.html" %}{% endif %}
+            {% if "pinned_notes" in pinned_dashboard_widgets %}{% include "includes/dashboard_pinned_notes_widget.html" %}{% endif %}
+        </div>
+    </section>
+    {% endif %}
+
     <div class="dashboard-main-grid">
         <section class="dashboard-panel weekly-panel">
             <div class="panel-heading">
@@ -151,42 +162,13 @@
         </section>
     </div>
 
+    {% if has_unpinned_dashboard_widgets %}
     <div class="dashboard-workspace-grid">
-        <section class="dashboard-panel planner-panel">
-            <div class="panel-heading"><div><span class="dashboard-eyebrow">Plan the next step</span><h2>To-do list</h2></div></div>
-            <form action="{% url 'planner:add_task' %}" method="post" class="quick-task-form">
-                {% csrf_token %}
-                <input name="title" maxlength="220" placeholder="What needs to be done?" required>
-                <input name="due_date" type="date" aria-label="Due date">
-                <select name="priority" aria-label="Priority"><option value="normal">Normal</option><option value="high">High</option><option value="low">Low</option></select>
-                <button>Add</button>
-            </form>
-            {% if tasks %}<div class="task-list">{% for task in tasks %}<div class="task-row {% if task.completed %}is-completed{% endif %} {% if task.due_date and task.due_date < today and not task.completed %}is-overdue{% endif %}"><form method="post" action="{% url 'planner:toggle_task' task.id %}">{% csrf_token %}<button class="task-check" aria-label="Toggle task">{% if task.completed %}&#10003;{% endif %}</button></form><div><strong>{{ task.title }}</strong><span>{% if task.due_date %}{{ task.due_date|date:"M j" }}{% else %}No date{% endif %} · {{ task.get_priority_display }}</span></div><form method="post" action="{% url 'planner:delete_task' task.id %}">{% csrf_token %}<button class="task-delete" aria-label="Delete task">&times;</button></form></div>{% endfor %}</div>{% else %}<div class="dashboard-empty compact"><p>No tasks yet. Add the next small step.</p></div>{% endif %}
-        </section>
-
-        <section class="dashboard-panel quick-notes-panel">
-            <div class="panel-heading"><div><span class="dashboard-eyebrow">Capture before it disappears</span><h2><a href="{% url 'notes:quick_notes' %}">Quick notes</a></h2></div><a class="panel-link" href="{% url 'notes:quick_notes' %}">View all &rarr;</a></div>
-            <form action="{% url 'notes:add_quick_note' %}" method="post" class="quick-note-form">{% csrf_token %}<input type="hidden" name="source" value="dashboard"><textarea name="content" maxlength="1000" placeholder="Write a thought, reminder or idea..." required></textarea><button>Add quick note</button></form>
-            {% if quick_notes %}
-            <div class="quick-note-list">
-                {% for quick_note in quick_notes %}
-                <article class="quick-note-preview{% if quick_note.is_pinned %} is-pinned{% endif %}">
-                    <p>{{ quick_note.content|truncatechars:180 }}</p>
-                    <div>
-                        <span>{% if quick_note.is_pinned %}Pinned &middot; {% endif %}{{ quick_note.updated_at|timesince }} ago</span>
-                        <form method="post" action="{% url 'notes:toggle_quick_note_pin' quick_note.id %}">{% csrf_token %}<input type="hidden" name="source" value="dashboard"><button class="quick-pin-button{% if quick_note.is_pinned %} is-pinned{% endif %}" aria-label="{% if quick_note.is_pinned %}Unpin quick note{% else %}Pin quick note{% endif %}" title="{% if quick_note.is_pinned %}Unpin{% else %}Pin{% endif %}">&#128204;</button></form>
-                    </div>
-                </article>
-                {% endfor %}
-            </div>
-            {% else %}<div class="dashboard-empty compact"><p>No quick notes yet.</p></div>{% endif %}
-        </section>
-
-        <section class="dashboard-panel pinned-panel">
-            <div class="panel-heading"><div><span class="dashboard-eyebrow">Keep in sight</span><h2>Pinned notes</h2></div></div>
-            {% if pinned_notes %}<div class="pinned-note-list">{% for note in pinned_notes %}{% if note.subject %}<a href="{% url 'topics:subject_detail' note.subject.id %}">{% else %}<a href="{% url 'topics:section_detail' note.section.id %}">{% endif %}<span>Pinned</span><strong>{{ note.title }}</strong><p>{{ note.content|striptags|truncatechars:90 }}</p></a>{% endfor %}</div>{% else %}<div class="dashboard-empty compact"><p>Pin an important note and it will stay here.</p></div>{% endif %}
-        </section>
+        {% if "tasks" not in pinned_dashboard_widgets %}{% include "includes/dashboard_tasks_widget.html" %}{% endif %}
+        {% if "quick_notes" not in pinned_dashboard_widgets %}{% include "includes/dashboard_quick_notes_widget.html" %}{% endif %}
+        {% if "pinned_notes" not in pinned_dashboard_widgets %}{% include "includes/dashboard_pinned_notes_widget.html" %}{% endif %}
     </div>
+    {% endif %}
 
     <section class="dashboard-panel activity-panel">
         <div class="panel-heading"><div><span class="dashboard-eyebrow">What you have done</span><h2>Recent focus activity</h2></div></div>
