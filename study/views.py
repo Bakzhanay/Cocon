@@ -209,7 +209,7 @@ def activity(request):
     try:
         user_timezone = ZoneInfo(preferences.timezone)
     except ZoneInfoNotFoundError:
-        user_timezone = ZoneInfo("Asia/Qyzylorda")
+        user_timezone = ZoneInfo("UTC")
     month_start = datetime(year, month, 1, tzinfo=user_timezone)
     next_month = (
         datetime(year + 1, 1, 1, tzinfo=user_timezone)

@@ -240,7 +240,7 @@
 
                 {% if user.is_authenticated %}
 
-                    <a href="{% url 'users:preferences' %}" class="user-settings-link">{{ user.username }}</a>
+                    <a href="{% url 'users:preferences' %}" class="user-settings-link">{{ user.first_name|default:user.username }}</a>
 
                     <form
                         action="{% url 'logout' %}"
@@ -287,7 +287,7 @@
 
 <script src="{% static 'js/sidebar.js' %}?v=3"></script>
 
-<script src="{% static 'js/right_panel.js' %}?v=5"></script>
+<script src="{% static 'js/right_panel.js' %}?v=6"></script>
 
 <script src="{% static 'js/modes.js' %}?v=2"></script>
 

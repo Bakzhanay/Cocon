@@ -620,7 +620,10 @@
         const firstDay = new Date(year, month, 1);
         const daysInMonth = new Date(year, month + 1, 0).getDate();
         const mondayOffset = (firstDay.getDay() + 6) % 7;
-        calendarMonth.textContent = firstDay.toLocaleDateString(undefined, { month: "long", year: "numeric" });
+        calendarMonth.textContent = firstDay.toLocaleDateString(
+            document.documentElement.lang || "en",
+            { month: "long", year: "numeric" },
+        );
         calendarGrid.innerHTML = "";
 
         for (let index = 0; index < mondayOffset; index += 1) {

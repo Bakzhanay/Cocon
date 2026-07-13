@@ -1,3 +1,5 @@
+from datetime import timedelta
+
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
@@ -61,6 +63,29 @@ class DashboardAndSearchTests(TestCase):
         self.assertContains(response, "Unassigned focus")
         self.assertContains(response, "Start another session")
         self.assertContains(response, "data-open-focus-panel")
+
+    def test_dashboard_chart_shows_the_last_seven_days(self):
+        now = timezone.now()
+        yesterday = now - timedelta(days=1)
+        StudySession.objects.create(
+            user=self.user,
+            topic=self.subject.section.topic,
+            section=self.subject.section,
+            subject=self.subject,
+            started_at=yesterday - timedelta(minutes=10),
+            ended_at=yesterday,
+            duration_seconds=600,
+            planned_duration_seconds=600,
+            status="completed",
+            completed=True,
+        )
+
+        response = self.client.get(reverse("topics:home"))
+
+        chart = response.context["weekly_chart"]
+        self.assertEqual(len(chart), 7)
+        self.assertEqual(chart[-2]["date"], yesterday.date())
+        self.assertEqual(chart[-2]["minutes"], 10)
 
     def test_search_finds_and_links_subject_flashcard(self):
         response = self.client.get(reverse("topics:search"), {"q": "mitosis"})

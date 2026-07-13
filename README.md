@@ -1,11 +1,28 @@
-# Cocon
+<p align="center">
+  <img src="static/images/cocon-logo.png" alt="Cocon pixel-art butterfly and cocoon logo" width="80">
+</p>
 
-Cocon is a calm, all-in-one study workspace for organizing learning materials,
-planning the next step, and understanding where focused time actually goes.
+<h1 align="center">Cocon</h1>
+
+<p align="center">
+  A calm, all-in-one study workspace for turning focused time into visible progress.
+</p>
+
+![Cocon dashboard with focus analytics, Pomodoro timer, and study navigation](docs/images/cocon-dashboard.png)
+
+Cocon helps organize learning materials, plan the next step, and understand
+where focused time actually goes.
 Instead of keeping notes, flashcards, timers, and plans across many tabs, Cocon
 connects them to one learning hierarchy:
 
 `Topic → Section → Subject → Notes / Flashcards`
+
+## Product tour
+
+![Animated tour of the Cocon dashboard, learning rhythm, and focus tools](docs/images/cocon-demo.gif)
+
+The demo uses fictional study data and a neutral user profile; no personal
+database or uploaded learning files are included in the repository.
 
 ## What it can do
 

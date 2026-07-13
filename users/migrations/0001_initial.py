@@ -18,7 +18,7 @@ class Migration(migrations.Migration):
             name='UserPreferences',
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('timezone', models.CharField(default='Asia/Qyzylorda', max_length=64)),
+                ('timezone', models.CharField(default='UTC', max_length=64)),
                 ('daily_focus_goal_minutes', models.PositiveIntegerField(default=90)),
                 ('weekly_focus_goal_minutes', models.PositiveIntegerField(default=450)),
                 ('user', models.OneToOneField(on_delete=django.db.models.deletion.CASCADE, related_name='study_preferences', to=settings.AUTH_USER_MODEL)),

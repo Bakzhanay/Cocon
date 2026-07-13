@@ -5,7 +5,7 @@
     <header class="dashboard-hero">
         <div>
             <span class="dashboard-eyebrow">Your learning overview</span>
-            <h1>{% if is_new_user %}Welcome to Cocon, {{ user.username }}{% else %}Welcome back, {{ user.username }}{% endif %}</h1>
+            <h1>{% if is_new_user %}Welcome to Cocon, {{ user.first_name|default:user.username }}{% else %}Welcome back, {{ user.first_name|default:user.username }}{% endif %}</h1>
             <p>{% if is_new_user %}A calm place to organize what you learn and focus on one step at a time.{% else %}Keep the momentum going — one focused session at a time.{% endif %}</p>
         </div>
         <div class="weekly-goal-chip">
@@ -54,7 +54,7 @@
                 <div><span class="dashboard-eyebrow">Rhythm</span><h2>Focus time</h2></div>
                 <span class="panel-note">Last 7 days</span>
             </div>
-            <div class="weekly-chart" aria-label="Focus minutes for the current week">
+            <div class="weekly-chart" aria-label="Focus minutes for the last seven days">
                 {% for day in weekly_chart %}
                 <div class="chart-day {% if day.is_today %}is-today{% endif %}">
                     <span class="chart-value">{{ day.minutes }}</span>

@@ -496,6 +496,8 @@ def dashboard(request):
     tomorrow_start = today_start + timedelta(days=1)
     week_start_at = datetime.combine(week_start, time.min, tzinfo=user_timezone)
     week_end_at = week_start_at + timedelta(days=7)
+    chart_start = today - timedelta(days=6)
+    chart_start_at = datetime.combine(chart_start, time.min, tzinfo=user_timezone)
 
     completed_sessions = StudySession.objects.filter(
         user=request.user,
@@ -512,14 +514,18 @@ def dashboard(request):
     )
     week_seconds = week_sessions.aggregate(total=Sum("duration_seconds"))["total"] or 0
 
+    chart_sessions = completed_sessions.filter(
+        ended_at__gte=chart_start_at,
+        ended_at__lt=tomorrow_start,
+    )
     daily_totals = {}
-    for ended_at, duration in week_sessions.values_list("ended_at", "duration_seconds"):
+    for ended_at, duration in chart_sessions.values_list("ended_at", "duration_seconds"):
         local_day = ended_at.astimezone(user_timezone).date()
         daily_totals[local_day] = daily_totals.get(local_day, 0) + duration
     weekly_chart = []
     max_daily_seconds = max([*daily_totals.values(), 1])
     for offset in range(7):
-        day = week_start + timedelta(days=offset)
+        day = chart_start + timedelta(days=offset)
         seconds = daily_totals.get(day, 0)
         weekly_chart.append({
             "date": day,
