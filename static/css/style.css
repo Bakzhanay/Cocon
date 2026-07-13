@@ -573,6 +573,14 @@ body{
 
 .auth-logo{
 
+    display:flex;
+
+    align-items:center;
+
+    justify-content:center;
+
+    gap:8px;
+
     font-size:28px;
 
     font-weight:700;
@@ -871,6 +879,12 @@ body{
 
 .sidebar-title{
 
+    display:inline-flex;
+
+    align-items:center;
+
+    gap:7px;
+
     text-decoration:none;
     color:inherit;
 
@@ -878,6 +892,30 @@ body{
     font-weight:700;
 
     transition:.2s;
+
+}
+
+.brand-icon{
+
+    display:block;
+
+    width:50px;
+
+    height:50px;
+
+    flex:0 0 auto;
+
+    object-fit:contain;
+
+    image-rendering:pixelated;
+
+}
+
+.auth-logo .brand-icon{
+
+    width:50px;
+
+    height:50px;
 
 }
 

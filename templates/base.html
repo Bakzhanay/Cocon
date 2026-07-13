@@ -11,7 +11,9 @@
 
     {% load static %}
 
-    <link rel="stylesheet" href="{% static 'css/style.css' %}?v=4">
+    <link rel="icon" type="image/png" sizes="64x64" href="{% static 'images/cocon-logo.png' %}">
+
+    <link rel="stylesheet" href="{% static 'css/style.css' %}?v=5">
 
     <link rel="stylesheet" href="{% static 'css/right_panel.css' %}">
 
@@ -52,7 +54,13 @@
         href="{% url 'topics:home' %}"
         class="sidebar-title">
 
-        Cocon &#129419;
+        <span>Cocon</span>
+        <img
+            class="brand-icon"
+            src="{% static 'images/cocon-logo.png' %}"
+            width="50"
+            height="50"
+            alt="">
 
     </a>
 

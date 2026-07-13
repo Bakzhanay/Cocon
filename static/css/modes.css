@@ -58,6 +58,10 @@ html.dark-mode .right-sidebar {
     background: #181d1a;
 }
 
+html.dark-mode .brand-icon {
+    filter: drop-shadow(0 0 1px rgba(226, 239, 232, .55));
+}
+
 html.dark-mode :where(.main-area, .right-sidebar) :where(h1, h2, h3, h4, h5, h6, strong, label) {
     color: var(--dark-heading);
 }

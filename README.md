@@ -1,4 +1,4 @@
-# Cocon 🥥
+# Cocon
 
 Cocon is a calm, all-in-one study workspace for organizing learning materials,
 planning the next step, and understanding where focused time actually goes.

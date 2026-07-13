@@ -12,8 +12,10 @@
 
     {% load static %}
 
+    <link rel="icon" type="image/png" sizes="64x64" href="{% static 'images/cocon-logo.png' %}">
+
     <link rel="stylesheet"
-          href="{% static 'css/style.css' %}">
+          href="{% static 'css/style.css' %}?v=5">
 
 </head>
 
@@ -25,7 +27,13 @@
 
         <div class="auth-logo">
 
-            Cocon &#129419;
+            <span>Cocon</span>
+            <img
+                class="brand-icon"
+                src="{% static 'images/cocon-logo.png' %}"
+                width="50"
+                height="50"
+                alt="">
 
         </div>
 
