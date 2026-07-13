@@ -1,0 +1,21 @@
+.quick-notes-page { max-width:1100px; margin:0 auto; }
+.quick-notes-header { display:flex; align-items:flex-end; justify-content:space-between; gap:24px; margin-bottom:20px; }
+.quick-notes-header h1 { margin:5px 0 7px; color:#2f3b35; font-size:34px; letter-spacing:-.04em; }
+.quick-notes-header p { margin:0; color:#85827b; font-size:13px; }
+.quick-note-compose { display:grid; grid-template-columns:minmax(0,1fr) 150px; gap:10px; margin-bottom:22px; padding:18px; border:1px solid #dcd8d0; border-radius:16px; background:#f4f2ed; }
+.quick-note-compose textarea { min-height:92px; padding:13px 14px; border:1px solid #d7d3cb; border-radius:11px; background:#fbfaf7; color:#3f4642; font:inherit; font-size:13px; line-height:1.55; resize:vertical; }
+.quick-note-compose button { border:0; border-radius:11px; background:#718f86; color:#fff; cursor:pointer; font:inherit; font-size:12px; font-weight:800; }
+.quick-notes-list { columns:2 320px; column-gap:13px; }
+.quick-note-card { break-inside:avoid; margin:0 0 13px; padding:17px; border:1px solid #ded9d0; border-radius:15px; background:#fbfaf7; box-shadow:0 4px 14px rgba(57,61,57,.03); }
+.quick-note-card.is-pinned { border-color:#afc1bb; background:#edf1ec; }
+.quick-note-card > p { margin:0; color:#454d49; font-size:13px; line-height:1.65; overflow-wrap:anywhere; white-space:pre-wrap; }
+.quick-note-card footer { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:15px; padding-top:12px; border-top:1px solid #e6e2da; }
+.quick-note-card time { color:#969189; font-size:9px; }
+.quick-note-actions { display:flex; align-items:center; gap:6px; }
+.quick-note-actions form { margin:0; }
+.quick-note-actions button { min-height:30px; padding:6px 9px; border:1px solid #d9d5cd; border-radius:8px; background:#f4f2ed; color:#68706c; cursor:pointer; font:inherit; font-size:9px; font-weight:800; }
+.quick-note-actions .pin-action.is-pinned { border-color:#9fb5ae; background:#dce8e3; color:#4f7167; }
+.quick-note-actions .delete-action { border-color:#e7d0cb; background:#f7e8e5; color:#9d5c51; }
+.quick-notes-empty { padding:55px 25px; border:2px dashed #d8d4cc; border-radius:18px; color:#8d8981; text-align:center; }
+.quick-notes-empty p { margin:0; }
+@media(max-width:700px){.quick-notes-header{align-items:flex-start;flex-direction:column}.quick-note-compose{grid-template-columns:1fr}.quick-note-compose button{min-height:44px}.quick-notes-list{columns:1}}

@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="flashcard-page due-flashcard-page">
+    <a href="{% url 'topics:home' %}" class="back-link">&larr; Back to dashboard</a>
+    <header class="flashcard-page-header">
+        <div>
+            <span class="dashboard-eyebrow">Spaced repetition</span>
+            <h1>Reviews due</h1>
+            <p>{{ due_count }} card{{ due_count|pluralize }} ready for review across your learning areas.</p>
+        </div>
+    </header>
+
+    {% if due_cards %}
+    <div class="flashcard-list">
+        {% for card in due_cards %}
+        <div class="flashcard-review-context">
+            {% if card.subject %}
+            <a href="{% url 'flashcards:subject_flashcards' card.subject.id %}">{{ card.subject.section.topic.title }} / {{ card.subject.section.title }} / {{ card.subject.title }}</a>
+            {% else %}
+            <a href="{% url 'flashcards:section_flashcards' card.section.id %}">{{ card.section.topic.title }} / {{ card.section.title }}</a>
+            {% endif %}
+        </div>
+        {% include "flashcards/_flashcard.html" %}
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="flashcard-empty">
+        <strong>You are caught up</strong>
+        <p>No flashcards are due right now. New and scheduled cards will appear here automatically.</p>
+        <a href="{% url 'topics:home' %}">Return to dashboard</a>
+    </div>
+    {% endif %}
+</div>
+<script src="{% static 'js/flashcards.js' %}?v=2"></script>
+{% endblock %}

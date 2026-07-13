@@ -1,0 +1,209 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="dashboard-shell">
+    <header class="dashboard-hero">
+        <div>
+            <span class="dashboard-eyebrow">Your learning overview</span>
+            <h1>{% if is_new_user %}Welcome to Cocon, {{ user.username }}{% else %}Welcome back, {{ user.username }}{% endif %}</h1>
+            <p>{% if is_new_user %}A calm place to organize what you learn and focus on one step at a time.{% else %}Keep the momentum going — one focused session at a time.{% endif %}</p>
+        </div>
+        <div class="weekly-goal-chip">
+            <span>This week</span>
+            <strong>{{ week_minutes }} / {{ week_goal }} min</strong>
+            <div><i style="width: {{ week_progress }}%"></i></div>
+        </div>
+    </header>
+
+    {% if is_new_user %}
+    <section class="onboarding-card">
+        <div><span>1</span><strong>Create your learning map</strong><p>Add a topic, then sections and subjects in the left sidebar.</p></div>
+        <div><span>2</span><strong>Collect what matters</strong><p>Write notes, create flashcards, pin important material and plan tasks.</p></div>
+        <div><span>3</span><strong>Start a focus session</strong><p>Use the Pomodoro panel. Completed sessions will build your statistics.</p></div>
+    </section>
+    {% endif %}
+
+    <section class="dashboard-metrics" aria-label="Study summary">
+        <article class="metric-card metric-primary">
+            <div class="metric-ring" style="--metric-progress: {{ today_progress }}%;">
+                <span>{{ today_progress }}%</span>
+            </div>
+            <div>
+                <span>Today</span>
+                <strong>{{ today_minutes }} <small>/ {{ today_goal }} min</small></strong>
+                <p>Focused study time</p>
+            </div>
+        </article>
+        <article class="metric-card">
+            <span class="metric-symbol">S</span>
+            <div><span>Current streak</span><strong>{{ streak }} <small>days</small></strong><p>Consistency matters</p></div>
+        </article>
+        <article class="metric-card">
+            <span class="metric-symbol">#</span>
+            <div><span>This week</span><strong>{{ week_sessions_count }} <small>sessions</small></strong><p>{{ week_minutes }} focused minutes</p></div>
+        </article>
+        <a class="metric-card metric-link" href="{% url 'flashcards:due_flashcards' %}" aria-label="Review {{ due_flashcards }} due flashcards">
+            <span class="metric-symbol">R</span>
+            <div><span>Reviews due</span><strong>{{ due_flashcards }} <small>cards</small></strong><p>Ready for repetition</p></div>
+        </a>
+    </section>
+
+    <div class="dashboard-main-grid">
+        <section class="dashboard-panel weekly-panel">
+            <div class="panel-heading">
+                <div><span class="dashboard-eyebrow">Rhythm</span><h2>Focus time</h2></div>
+                <span class="panel-note">Last 7 days</span>
+            </div>
+            <div class="weekly-chart" aria-label="Focus minutes for the current week">
+                {% for day in weekly_chart %}
+                <div class="chart-day {% if day.is_today %}is-today{% endif %}">
+                    <span class="chart-value">{{ day.minutes }}</span>
+                    <div class="chart-track"><i style="height: {{ day.height }}%"></i></div>
+                    <span class="chart-label">{{ day.label }}</span>
+                </div>
+                {% endfor %}
+            </div>
+        </section>
+
+        <section class="dashboard-panel continue-panel">
+            <div class="panel-heading"><div><span class="dashboard-eyebrow">Pick up where you left off</span><h2>Continue studying</h2></div></div>
+            {% if recent_session %}
+                <div class="continue-context">
+                    {% if recent_session.subject or recent_session.subject_title or recent_session.section or recent_session.section_title or recent_session.topic or recent_session.topic_title %}
+                    <span>{{ recent_session.get_activity_type_display }}</span>
+                    <h3>{% if recent_session.subject %}{{ recent_session.subject.title }}{% elif recent_session.subject_title %}{{ recent_session.subject_title }}{% elif recent_session.section %}{{ recent_session.section.title }}{% elif recent_session.section_title %}{{ recent_session.section_title }}{% elif recent_session.topic %}{{ recent_session.topic.title }}{% else %}{{ recent_session.topic_title }}{% endif %}</h3>
+                    {% else %}
+                    <span>Focus session</span>
+                    <h3>{% if recent_session.activity_type == "flashcards" %}Mixed flashcard review{% elif recent_session.activity_type == "notes" %}Notes session{% else %}Unassigned focus{% endif %}</h3>
+                    {% endif %}
+                    <p>{{ recent_session_minutes }} focused minutes in your last session.</p>
+                </div>
+                {% if recent_session.subject %}
+                    {% if recent_session.activity_type == "flashcards" %}
+                    <a class="dashboard-action" href="{% url 'flashcards:subject_flashcards' recent_session.subject.id %}">Review flashcards</a>
+                    {% else %}
+                    <a class="dashboard-action" href="{% url 'topics:subject_detail' recent_session.subject.id %}">Continue notes</a>
+                    {% endif %}
+                {% elif recent_session.section %}
+                    <a class="dashboard-action" href="{% url 'topics:section_detail' recent_session.section.id %}">Open section</a>
+                {% elif recent_session.topic %}
+                    <a class="dashboard-action" href="{% url 'topics:topic_detail' recent_session.topic.id %}">Open topic</a>
+                {% else %}
+                    <button class="dashboard-action dashboard-action-button" type="button" data-open-focus-panel>Start another session</button>
+                {% endif %}
+            {% else %}
+                <div class="dashboard-empty"><p>Complete your first focus session and it will appear here.</p></div>
+            {% endif %}
+        </section>
+    </div>
+
+    <div class="dashboard-detail-grid">
+        <section class="dashboard-panel subject-focus-panel">
+            <div class="panel-heading"><div><span class="dashboard-eyebrow">Balance</span><h2>Focus by area</h2></div><span class="panel-note">This week</span></div>
+            {% if focus_by_topic %}
+                <div class="subject-focus-list">
+                    {% for item in focus_by_topic %}
+                    <a href="{% url 'topics:topic_detail' item.topic.id %}" class="subject-focus-row">
+                        <div><strong>{{ item.topic.title }}</strong><span>{{ item.detail }}</span></div>
+                        <div class="subject-bar"><i style="width: {{ item.bar_width }}%"></i></div>
+                        <span>{{ item.minutes }}m</span>
+                    </a>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="dashboard-empty"><p>Your learning areas will appear after you create a topic.</p></div>
+            {% endif %}
+        </section>
+
+        <section class="dashboard-panel attention-panel">
+            <div class="panel-heading"><div><span class="dashboard-eyebrow">Weekly goals</span><h2>Needs attention</h2></div></div>
+            {% if needs_attention %}
+                <div class="attention-list">
+                    {% for item in needs_attention %}
+                    <a href="{% url 'topics:subject_detail' item.subject.id %}">
+                        <div><strong>{{ item.subject.title }}</strong><span>{{ item.remaining_minutes }} minutes left</span></div>
+                        <span class="priority-badge priority-{{ item.subject.priority }}">{{ item.subject.get_priority_display }}</span>
+                    </a>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="dashboard-empty"><p>All weekly subject goals are on track.</p></div>
+            {% endif %}
+        </section>
+
+        <section class="dashboard-panel recent-notes-panel">
+            <div class="panel-heading"><div><span class="dashboard-eyebrow">Recently updated</span><h2>Notes</h2></div></div>
+            {% if recent_notes %}
+                <div class="recent-note-list">
+                    {% for note in recent_notes %}
+                        {% if note.subject %}
+                        <a href="{% url 'topics:subject_detail' note.subject.id %}">
+                        {% else %}
+                        <a href="{% url 'topics:section_detail' note.section.id %}">
+                        {% endif %}
+                            <span>N</span><div><strong>{{ note.title }}</strong><small>{{ note.updated_at|timesince }} ago</small></div>
+                        </a>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="dashboard-empty"><p>Your recently updated notes will appear here.</p></div>
+            {% endif %}
+        </section>
+    </div>
+
+    <div class="dashboard-workspace-grid">
+        <section class="dashboard-panel planner-panel">
+            <div class="panel-heading"><div><span class="dashboard-eyebrow">Plan the next step</span><h2>To-do list</h2></div></div>
+            <form action="{% url 'planner:add_task' %}" method="post" class="quick-task-form">
+                {% csrf_token %}
+                <input name="title" maxlength="220" placeholder="What needs to be done?" required>
+                <input name="due_date" type="date" aria-label="Due date">
+                <select name="priority" aria-label="Priority"><option value="normal">Normal</option><option value="high">High</option><option value="low">Low</option></select>
+                <button>Add</button>
+            </form>
+            {% if tasks %}<div class="task-list">{% for task in tasks %}<div class="task-row {% if task.completed %}is-completed{% endif %} {% if task.due_date and task.due_date < today and not task.completed %}is-overdue{% endif %}"><form method="post" action="{% url 'planner:toggle_task' task.id %}">{% csrf_token %}<button class="task-check" aria-label="Toggle task">{% if task.completed %}&#10003;{% endif %}</button></form><div><strong>{{ task.title }}</strong><span>{% if task.due_date %}{{ task.due_date|date:"M j" }}{% else %}No date{% endif %} · {{ task.get_priority_display }}</span></div><form method="post" action="{% url 'planner:delete_task' task.id %}">{% csrf_token %}<button class="task-delete" aria-label="Delete task">&times;</button></form></div>{% endfor %}</div>{% else %}<div class="dashboard-empty compact"><p>No tasks yet. Add the next small step.</p></div>{% endif %}
+        </section>
+
+        <section class="dashboard-panel quick-notes-panel">
+            <div class="panel-heading"><div><span class="dashboard-eyebrow">Capture before it disappears</span><h2><a href="{% url 'notes:quick_notes' %}">Quick notes</a></h2></div><a class="panel-link" href="{% url 'notes:quick_notes' %}">View all &rarr;</a></div>
+            <form action="{% url 'notes:add_quick_note' %}" method="post" class="quick-note-form">{% csrf_token %}<input type="hidden" name="source" value="dashboard"><textarea name="content" maxlength="1000" placeholder="Write a thought, reminder or idea..." required></textarea><button>Add quick note</button></form>
+            {% if quick_notes %}
+            <div class="quick-note-list">
+                {% for quick_note in quick_notes %}
+                <article class="quick-note-preview{% if quick_note.is_pinned %} is-pinned{% endif %}">
+                    <p>{{ quick_note.content|truncatechars:180 }}</p>
+                    <div>
+                        <span>{% if quick_note.is_pinned %}Pinned &middot; {% endif %}{{ quick_note.updated_at|timesince }} ago</span>
+                        <form method="post" action="{% url 'notes:toggle_quick_note_pin' quick_note.id %}">{% csrf_token %}<input type="hidden" name="source" value="dashboard"><button class="quick-pin-button{% if quick_note.is_pinned %} is-pinned{% endif %}" aria-label="{% if quick_note.is_pinned %}Unpin quick note{% else %}Pin quick note{% endif %}" title="{% if quick_note.is_pinned %}Unpin{% else %}Pin{% endif %}">&#128204;</button></form>
+                    </div>
+                </article>
+                {% endfor %}
+            </div>
+            {% else %}<div class="dashboard-empty compact"><p>No quick notes yet.</p></div>{% endif %}
+        </section>
+
+        <section class="dashboard-panel pinned-panel">
+            <div class="panel-heading"><div><span class="dashboard-eyebrow">Keep in sight</span><h2>Pinned notes</h2></div></div>
+            {% if pinned_notes %}<div class="pinned-note-list">{% for note in pinned_notes %}{% if note.subject %}<a href="{% url 'topics:subject_detail' note.subject.id %}">{% else %}<a href="{% url 'topics:section_detail' note.section.id %}">{% endif %}<span>Pinned</span><strong>{{ note.title }}</strong><p>{{ note.content|striptags|truncatechars:90 }}</p></a>{% endfor %}</div>{% else %}<div class="dashboard-empty compact"><p>Pin an important note and it will stay here.</p></div>{% endif %}
+        </section>
+    </div>
+
+    <section class="dashboard-panel activity-panel">
+        <div class="panel-heading"><div><span class="dashboard-eyebrow">What you have done</span><h2>Recent focus activity</h2></div></div>
+        {% if recent_sessions %}
+        <div class="activity-timeline">
+            {% for session in recent_sessions %}
+            <div class="activity-row">
+                <span class="activity-mark"></span>
+                <div>
+                    <strong>{% if session.topic %}{{ session.topic.title }}{% elif session.topic_title %}{{ session.topic_title }}{% endif %}{% if session.section %} / {{ session.section.title }}{% elif session.section_title %} / {{ session.section_title }}{% endif %}{% if session.subject %} / {{ session.subject.title }}{% elif session.subject_title %} / {{ session.subject_title }}{% endif %}{% if not session.topic and not session.topic_title and not session.section and not session.section_title and not session.subject and not session.subject_title %}{% if session.activity_type == "flashcards" %}Mixed flashcard review{% elif session.activity_type == "notes" %}Notes session{% else %}General study{% endif %}{% endif %}</strong>
+                    <small>{{ session.get_activity_type_display }} · {{ session.ended_at|timesince }} ago</small>
+                </div>
+                <span>{% widthratio session.duration_seconds 60 1 %} min</span>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}<div class="dashboard-empty"><p>Your completed focus sessions will build a timeline here.</p></div>{% endif %}
+    </section>
+</div>
+{% endblock %}

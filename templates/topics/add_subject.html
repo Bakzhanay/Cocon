@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="form-page">
+
+    <div class="form-card">
+
+        <h1>Add Subject</h1>
+
+        <p class="form-subtitle">
+
+            Topic: <strong>{{ section.topic.title }}</strong>
+
+        </p>
+
+        <form method="post">
+
+            {% csrf_token %}
+
+            <div class="form-group">
+
+                <label for="{{ form.title.id_for_label }}">
+
+                    Subject name
+
+                </label>
+
+                {{ form.title }}
+
+                {{ form.title.errors }}
+
+            </div>
+
+            <div class="form-group">
+                <label for="{{ form.weekly_goal_minutes.id_for_label }}">Weekly goal (minutes)</label>
+                {{ form.weekly_goal_minutes }}
+                <small class="form-hint">How much focused time you want to give this subject each week.</small>
+                {{ form.weekly_goal_minutes.errors }}
+            </div>
+
+            <div class="form-group">
+                <label for="{{ form.priority.id_for_label }}">Priority</label>
+                {{ form.priority }}
+                {{ form.priority.errors }}
+            </div>
+
+            <div class="form-actions">
+
+                <button type="submit" class="primary-btn">
+
+                    Save
+
+                </button>
+
+                <a href="{% url 'topics:section_detail' section.id %}"
+                   class="secondary-btn">
+
+                    Cancel
+
+                </a>
+
+            </div>
+
+        </form>
+
+    </div>
+
+</div>
+
+{% endblock %}

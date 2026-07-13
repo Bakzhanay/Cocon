@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="form-page">
+
+    <div class="form-card">
+
+        <h1>Delete Topic</h1>
+
+        <p class="form-subtitle">
+
+            Are you sure you want to delete
+
+            <strong>{{ topic.title }}</strong>?
+
+        </p>
+
+        <form method="post">
+
+            {% csrf_token %}
+
+            <div class="form-actions">
+
+                <button
+                    type="submit"
+                    class="btn-danger-small">
+
+                    Delete
+
+                </button>
+
+                <a
+                    href="{% url 'topics:home' %}"
+                    class="secondary-btn">
+
+                    Cancel
+
+                </a>
+
+            </div>
+
+        </form>
+
+    </div>
+
+</div>
+
+{% endblock %}

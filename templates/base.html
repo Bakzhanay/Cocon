@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>{% block title %}Cocon{% endblock %}</title>
+
+    {% load static %}
+
+    <link rel="stylesheet" href="{% static 'css/style.css' %}?v=4">
+
+    <link rel="stylesheet" href="{% static 'css/right_panel.css' %}">
+
+    <link rel="stylesheet" href="{% static 'css/dashboard.css' %}?v=5">
+
+    <link rel="stylesheet" href="{% static 'css/flashcards.css' %}?v=2">
+
+    <link rel="stylesheet" href="{% static 'css/quick_notes.css' %}?v=1">
+
+    <link rel="stylesheet" href="{% static 'css/search.css' %}">
+
+    <link rel="stylesheet" href="{% static 'css/modes.css' %}?v=4">
+
+    <script>
+        if (localStorage.getItem("cocon-theme") === "dark") document.documentElement.classList.add("dark-mode");
+        if (localStorage.getItem("cocon-low-stimulus") === "true") document.documentElement.classList.add("low-stimulus");
+    </script>
+
+</head>
+
+<body>
+
+<div class="app-layout">
+
+    <aside class="sidebar">
+
+        <div class="sidebar-logo">
+
+    <button
+        id="sidebarToggle"
+        class="sidebar-toggle">
+
+        ☰
+
+    </button>
+
+    <a
+        href="{% url 'topics:home' %}"
+        class="sidebar-title">
+
+        Cocon &#129419;
+
+    </a>
+
+</div>
+
+        <div class="sidebar-content">
+
+            {% if sidebar_topics %}
+
+                {% for topic in sidebar_topics %}
+
+<div
+    class="topic-block {% if current_topic == topic.id %}active-topic{% endif %}"
+    data-topic="{{ topic.id }}">
+
+    <div class="topic-header">
+
+        <button
+            class="topic-toggle"
+            onclick="toggleTopic(event, this)">
+
+            ▶
+
+        </button>
+
+        <a
+            href="{% url 'topics:topic_detail' topic.id %}"
+            class="topic-title{% if topic.is_pinned %} is-pinned{% endif %}">
+
+            {% if topic.is_pinned %}<span class="topic-pin-mark" aria-label="Pinned">&#128204;</span>{% endif %}
+            {{ topic.title }}
+
+        </a>
+
+        <div class="topic-menu">
+
+    <button
+        class="menu-button"
+        onclick="toggleMenu(event,this)">
+
+        ⋯
+
+    </button>
+
+    <div class="menu-dropdown">
+
+        <a href="{% url 'topics:edit_topic' topic.id %}">
+            Rename
+        </a>
+
+        <form method="post" action="{% url 'topics:toggle_topic_pin' topic.id %}" class="menu-action-form">
+            {% csrf_token %}
+            <input type="hidden" name="next" value="{{ request.get_full_path }}">
+            <button type="submit">{% if topic.is_pinned %}Unpin{% else %}Pin{% endif %}</button>
+        </form>
+
+        <a
+            href="{% url 'topics:delete_topic' topic.id %}"
+            class="danger">
+
+            Delete
+
+        </a>
+
+    </div>
+
+</div>
+
+    </div>
+
+    <div class="section-list" style="display:none;">
+
+
+        {% for section in topic.sections.all %}
+
+        <div class="section-row">
+
+            <a
+                href="{% url 'topics:section_detail' section.id %}"
+                class="section-link {% if current_section == section.id %}active-section{% endif %}">
+
+                {{ section.title }}
+
+            </a>
+
+            <div class="section-menu">
+
+    <button
+        class="menu-button"
+        onclick="toggleMenu(event,this)">
+
+        ⋯
+
+    </button>
+
+    <div class="menu-dropdown">
+
+        <a href="{% url 'topics:edit_section' section.id %}">
+            Rename
+        </a>
+
+        <a
+            href="{% url 'topics:delete_section' section.id %}"
+            class="danger">
+
+            Delete
+
+        </a>
+
+    </div>
+
+</div>
+
+        </div>
+
+        {% empty %}
+
+        <div class="empty-sections">
+
+            No sections
+
+        </div>
+
+        {% endfor %}
+
+        <a
+            href="{% url 'topics:add_section' topic.id %}"
+            class="add-section">
+
+            ＋ Add Section
+
+        </a>
+
+    </div>
+
+</div>
+
+{% endfor %}
+
+            {% endif %}
+
+            <a
+                href="{% url 'topics:add_topic' %}"
+                class="add-topic">
+
+                ＋ Add Topic
+
+            </a>
+
+        </div>
+
+    </aside>
+
+
+    <main class="main-area">
+
+        <header class="topbar">
+
+            <form action="{% url 'topics:search' %}" method="get" role="search" class="search-form">
+
+                <input
+                    type="search"
+                    name="q"
+                    value="{{ request.GET.q }}"
+                    placeholder="Search Cocon..."
+                    class="search-input"
+                    aria-label="Search Cocon">
+
+            </form>
+
+            <div class="user-area">
+
+                <div class="mode-controls" aria-label="Display modes">
+                    <button id="themeToggle" type="button" aria-pressed="false" title="Toggle dark mode">&#9680;</button>
+                    <button id="stimulusToggle" type="button" aria-pressed="false" title="Toggle low-stimulus mode">&#9678;</button>
+                </div>
+
+                {% if user.is_authenticated %}
+
+                    <a href="{% url 'users:preferences' %}" class="user-settings-link">{{ user.username }}</a>
+
+                    <form
+                        action="{% url 'logout' %}"
+                        method="post">
+
+                        {% csrf_token %}
+
+                        <button>
+
+                            Logout
+
+                        </button>
+
+                    </form>
+
+                {% endif %}
+
+            </div>
+
+        </header>
+
+        <section class="page-content">
+
+            {% block content %}
+
+            {% endblock %}
+
+        </section>
+
+    </main>
+
+{% include "includes/right_panel.html" %}
+
+</div>
+
+<script>
+    const currentContext = {
+        topic_id: "{% if subject %}{{ subject.section.topic.id }}{% elif section %}{{ section.topic.id }}{% elif topic %}{{ topic.id }}{% elif note.subject %}{{ note.subject.section.topic.id }}{% elif note.section %}{{ note.section.topic.id }}{% else %}null{% endif %}",
+        subject_id: "{% if subject %}{{ subject.id }}{% elif note.subject %}{{ note.subject.id }}{% else %}null{% endif %}",
+        section_id: "{% if subject %}{{ subject.section.id }}{% elif section %}{{ section.id }}{% elif note.subject %}{{ note.subject.section.id }}{% elif note.section %}{{ note.section.id }}{% else %}null{% endif %}",
+        activity_type: "{{ current_activity_type|default:'general' }}"
+    };
+</script>
+
+<script src="{% static 'js/sidebar.js' %}?v=3"></script>
+
+<script src="{% static 'js/right_panel.js' %}?v=5"></script>
+
+<script src="{% static 'js/modes.js' %}?v=2"></script>
+
+</body>
+
+</html>

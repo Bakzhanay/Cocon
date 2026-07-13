@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="form-page">
+
+    <div class="form-card">
+
+        <h1>Add Topic</h1>
+
+        <form method="post">
+
+            {% csrf_token %}
+
+            <div class="form-group">
+
+                <label for="{{ form.title.id_for_label }}">
+
+                    Topic name
+
+                </label>
+
+                {{ form.title }}
+
+                {{ form.title.errors }}
+
+            </div>
+
+            <div class="form-actions">
+
+                <button type="submit" class="primary-btn">
+
+                    Save
+
+                </button>
+
+                <a href="{% url 'topics:home' %}"
+                   class="secondary-btn">
+
+                    Cancel
+
+                </a>
+
+            </div>
+
+        </form>
+
+    </div>
+
+</div>
+
+{% endblock %}

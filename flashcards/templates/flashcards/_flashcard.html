@@ -1,0 +1,48 @@
+<article class="study-flashcard {% if card.learned %}is-learned{% endif %}">
+    <div class="flashcard-card-top">
+        <div class="flashcard-state">
+            {% if card.learned %}<span class="state-dot"></span> Scheduled{% else %}<span class="state-dot"></span> Learning{% endif %}
+        </div>
+        <a href="{% url 'flashcards:toggle_flashcard' card.id %}{% if due_review_page %}?return_to=due{% endif %}" class="flashcard-check" aria-label="{% if card.learned %}Mark as learning{% else %}Mark as mastered{% endif %}" title="{% if card.learned %}Mark as learning{% else %}Mark as mastered{% endif %}">
+            {% if card.learned %}&#10003;{% else %}<span></span>{% endif %}
+        </a>
+    </div>
+
+    <div class="flashcard-question">
+        <span class="flashcard-label">Question</span>
+        <h3>{{ card.question }}</h3>
+        {% if card.question_image %}
+        <a href="{{ card.question_image.url }}" target="_blank" class="flashcard-image-link">
+            <img src="{{ card.question_image.url }}" alt="Question image">
+        </a>
+        {% endif %}
+    </div>
+
+    <div class="flashcard-answer" hidden>
+        <span class="flashcard-label">Answer</span>
+        <p>{{ card.answer }}</p>
+        {% if card.answer_image %}<img src="{{ card.answer_image.url }}" alt="Answer image" class="flashcard-answer-image">{% endif %}
+        {% if card.notes %}<div class="flashcard-notes"><span class="flashcard-label">Notes</span><p>{{ card.notes }}</p></div>{% endif %}
+
+        <form method="post" action="{% url 'flashcards:review_flashcard' card.id %}" class="review-actions">
+            {% csrf_token %}
+            {% if due_review_page %}<input type="hidden" name="return_to_due" value="1">{% endif %}
+            <span>How well did you remember?</span>
+            <div>
+                <button name="rating" value="again" class="rating-again">Again <small>10m</small></button>
+                <button name="rating" value="hard" class="rating-hard">Hard <small>1d+</small></button>
+                <button name="rating" value="good" class="rating-good">Good <small>{{ card.interval_days|default:1 }}d+</small></button>
+                <button name="rating" value="easy" class="rating-easy">Easy <small>4d+</small></button>
+            </div>
+        </form>
+    </div>
+
+    <footer class="flashcard-card-footer">
+        <button type="button" class="flashcard-reveal" data-flashcard-reveal>Show answer</button>
+        <div class="flashcard-meta">
+            {% if card.next_review_at %}<span>Next {{ card.next_review_at|date:"M j" }}</span>{% endif %}
+            <a href="{% url 'flashcards:edit_flashcard' card.id %}" class="flashcard-action-link">Edit</a>
+            <a href="{% url 'flashcards:delete_flashcard' card.id %}" class="flashcard-action-link danger-link">Delete</a>
+        </div>
+    </footer>
+</article>

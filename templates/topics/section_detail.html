@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="page-content">
+
+    <div class="page-header">
+
+        <div>
+
+            <h1>{{ section.title }}</h1>
+
+            <p class="page-subtitle">
+
+                {{ section.topic.title }}
+
+            </p>
+
+            {% if total_subjects %}
+            <div class="subject-mastered-summary">
+                <span>{{ completed_subjects }} of {{ total_subjects }} mastered</span>
+                <div><i style="width: {{ subjects_progress }}%"></i></div>
+            </div>
+            {% endif %}
+
+        </div>
+
+        <a href="{% url 'topics:add_subject' section.id %}"
+           class="primary-btn">
+
+            + Add Subject
+
+        </a>
+
+    </div>
+
+
+    <div class="subject-grid">
+
+        {% for subject in subjects %}
+
+        <div class="subject-card">
+
+            <div class="subject-top">
+
+                <div class="subject-title">
+
+                    <a>
+
+                        {{ subject.title }}
+
+                    </a>
+
+                </div>
+
+                <a href="{% url 'topics:toggle_subject' subject.id %}"
+                   class="subject-check">
+
+                    {% if subject.completed %}
+                        ✅
+                    {% else %}
+                        ⬜
+                    {% endif %}
+
+                </a>
+
+            </div>
+
+
+            <div class="subject-actions">
+
+                <a href="{% url 'flashcards:subject_flashcards' subject.id %}">
+
+                    🃏 Flashcards
+
+                </a>
+
+                <a href="{% url 'topics:subject_detail' subject.id %}">
+
+                    📝 Notes
+
+                </a>
+
+            </div>
+
+
+            <div class="subject-footer">
+
+                <a href="{% url 'topics:edit_subject' subject.id %}">
+
+                    ✏ Edit
+
+                </a>
+
+                <a href="{% url 'topics:delete_subject' subject.id %}">
+
+                    🗑 Delete
+
+                </a>
+
+            </div>
+
+        </div>
+
+        {% empty %}
+
+        <div class="empty-card">
+
+            No subjects yet.
+
+        </div>
+
+        {% endfor %}
+
+    </div>
+
+</div>
+
+{% endblock %}

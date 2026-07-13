@@ -1,0 +1,141 @@
+{% load static %}
+
+<aside id="rightSidebar" class="right-sidebar" aria-label="Focus tools">
+    <div class="right-sidebar-header">
+        <div>
+            <span class="panel-eyebrow">Your focus space</span>
+            <h2>Focus room</h2>
+        </div>
+        <button
+            id="rightSidebarToggle"
+            class="right-sidebar-toggle"
+            type="button"
+            aria-label="Hide focus panel"
+            aria-expanded="true"
+            title="Hide focus panel">
+            <span aria-hidden="true">&#8250;</span>
+        </button>
+    </div>
+
+    <div class="right-sidebar-content">
+        <section class="focus-card timer-card" aria-labelledby="focusTimerTitle">
+            <div class="timer-card-heading">
+                <div>
+                    <p id="timerPhase" class="timer-phase">Ready to focus</p>
+                    <h3 id="focusTimerTitle">Pomodoro timer</h3>
+                </div>
+                <span id="timerStatus" class="timer-status is-ready">Ready</span>
+            </div>
+
+            <div id="timerDial" class="timer-dial" style="--timer-progress: 0deg;">
+                <div class="timer-dial-inner">
+                    <strong id="timerDisplay" aria-live="polite">25:00</strong>
+                    <span id="timerModeLabel">Study</span>
+                </div>
+            </div>
+
+            <div class="timer-setting">
+                <span class="setting-label">Study</span>
+                <div id="studyDurationChoices" class="duration-choices" aria-label="Study duration">
+                    <button type="button" data-minutes="15">15</button>
+                    <button type="button" data-minutes="25" class="is-selected">25</button>
+                    <button type="button" data-minutes="50">50</button>
+                    <button type="button" data-minutes="90">90</button>
+                </div>
+            </div>
+
+            <div class="timer-setting">
+                <span class="setting-label">Break</span>
+                <div id="breakDurationChoices" class="duration-choices break-choices" aria-label="Break duration">
+                    <button type="button" data-minutes="0">None</button>
+                    <button type="button" data-minutes="5" class="is-selected">5</button>
+                    <button type="button" data-minutes="10">10</button>
+                    <button type="button" data-minutes="15">15</button>
+                    <button type="button" data-minutes="20">20</button>
+                    <button type="button" data-minutes="25">25</button>
+                </div>
+            </div>
+
+            <div class="timer-actions">
+                <button id="timerStart" type="button" class="timer-primary">Start</button>
+                <button id="timerPause" type="button" class="timer-secondary" disabled>Pause</button>
+                <button id="timerReset" type="button" class="timer-icon-button" aria-label="Reset timer" title="Reset timer">&#8635;</button>
+            </div>
+
+            <p id="sessionContext" class="session-context">
+                <span aria-hidden="true">&#9679;</span>
+                {% if subject %}
+                    Tracking {{ subject.section.topic.title }} / {{ subject.section.title }} / {{ subject.title }}{% if current_activity_type == "flashcards" %} / Flashcards{% elif current_activity_type == "notes" %} / Notes{% endif %}
+                {% elif section %}
+                    Tracking {{ section.topic.title }} / {{ section.title }}{% if current_activity_type == "flashcards" %} / Flashcards{% elif current_activity_type == "notes" %} / Notes{% endif %}
+                {% elif topic %}
+                    Tracking {{ topic.title }}
+                {% elif note.subject %}
+                    Tracking {{ note.subject.section.topic.title }} / {{ note.subject.section.title }} / {{ note.subject.title }} / Notes
+                {% elif note.section %}
+                    Tracking {{ note.section.topic.title }} / {{ note.section.title }} / Notes
+                {% else %}
+                    {% if current_activity_type == "flashcards" %}Tracking mixed flashcard review{% elif current_activity_type == "notes" %}Tracking notes{% else %}General study session{% endif %}
+                {% endif %}
+            </p>
+            <p id="timerMessage" class="timer-message" role="status"></p>
+        </section>
+
+        <section class="focus-card sound-card" aria-labelledby="soundscapeTitle">
+            <div class="card-title-row">
+                <div>
+                    <span class="panel-eyebrow">Background sounds</span>
+                    <h3 id="soundscapeTitle">Soundscape</h3>
+                </div>
+                <button id="soundToggle" class="sound-toggle" type="button" aria-label="Mute background sound" title="Mute background sound">&#9835;</button>
+            </div>
+
+            <label class="sound-select-label" for="backgroundSound">Choose a sound</label>
+            <select id="backgroundSound" class="sound-select">
+                <option value="none">Quiet</option>
+                <option value="rain">Soft rain</option>
+                <option value="forest">Deep forest</option>
+                <option value="ocean">Ocean waves</option>
+                <option value="fireplace">Fireplace</option>
+                <option value="cafe">Quiet cafe</option>
+                <option value="night">Night garden</option>
+                <option value="wind">Summer wind</option>
+                <option value="brown">Brown noise</option>
+                <option value="pink">Pink noise</option>
+                <option value="white">White noise</option>
+            </select>
+
+            <div class="volume-row">
+                <span aria-hidden="true">&#9834;</span>
+                <input id="soundVolume" type="range" min="0" max="100" value="32" aria-label="Background sound volume">
+                <span aria-hidden="true">&#9835;</span>
+            </div>
+            <p class="sound-hint">Generated live in your browser and loops until you stop it.</p>
+        </section>
+
+        <section class="focus-card calendar-card" aria-labelledby="activityTitle">
+            <div class="calendar-heading">
+                <div>
+                    <span class="panel-eyebrow">Consistency</span>
+                    <h3 id="activityTitle">Study activity</h3>
+                </div>
+                <div class="calendar-nav">
+                    <button id="calendarPrevious" type="button" aria-label="Previous month">&#8249;</button>
+                    <button id="calendarNext" type="button" aria-label="Next month">&#8250;</button>
+                </div>
+            </div>
+            <p id="calendarMonth" class="calendar-month"></p>
+            <div class="calendar-weekdays" aria-hidden="true">
+                <span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span><span>Su</span>
+            </div>
+            <div id="calendarGrid" class="calendar-grid" aria-label="Completed study sessions"></div>
+            <div class="calendar-legends">
+                <div class="calendar-legend"><span></span> Completed focus session</div>
+                <div class="calendar-legend task-legend"><span></span> Planned task</div>
+                <div class="calendar-legend missed-legend"><span></span> Missed plan</div>
+            </div>
+        </section>
+    </div>
+</aside>
+
+{{ request.user.id|json_script:"studyflow-user-id" }}

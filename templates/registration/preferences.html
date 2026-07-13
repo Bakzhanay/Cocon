@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="form-page">
+    <div class="form-card">
+        <span class="dashboard-eyebrow">Personal targets</span>
+        <h1>Study preferences</h1>
+        <p class="form-subtitle">These goals power your dashboard progress and weekly planning.</p>
+        <form method="post">
+            {% csrf_token %}
+            <div class="form-group"><label for="{{ form.daily_focus_goal_minutes.id_for_label }}">Daily focus goal (minutes)</label>{{ form.daily_focus_goal_minutes }}{{ form.daily_focus_goal_minutes.errors }}</div>
+            <div class="form-group"><label for="{{ form.weekly_focus_goal_minutes.id_for_label }}">Weekly focus goal (minutes)</label>{{ form.weekly_focus_goal_minutes }}{{ form.weekly_focus_goal_minutes.errors }}</div>
+            <div class="form-group"><label for="{{ form.timezone.id_for_label }}">Timezone</label>{{ form.timezone }}{{ form.timezone.errors }}</div>
+            <div class="form-actions"><button type="submit" class="primary-btn">Save preferences</button><a href="{% url 'topics:home' %}" class="secondary-btn">Cancel</a></div>
+        </form>
+    </div>
+</div>
+{% endblock %}

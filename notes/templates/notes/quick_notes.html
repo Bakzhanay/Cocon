@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="quick-notes-page">
+    <a href="{% url 'topics:home' %}" class="back-link">&larr; Back to dashboard</a>
+    <header class="quick-notes-header">
+        <div>
+            <span class="dashboard-eyebrow">Your independent notes</span>
+            <h1>Quick notes</h1>
+            <p>Capture ideas without attaching them to a topic. Pin what you want to keep visible.</p>
+        </div>
+    </header>
+
+    <form action="{% url 'notes:add_quick_note' %}" method="post" class="quick-note-compose">
+        {% csrf_token %}
+        <textarea name="content" maxlength="1000" placeholder="Write a thought, reminder or idea..." required></textarea>
+        <button type="submit">Add quick note</button>
+    </form>
+
+    {% if quick_notes %}
+    <div class="quick-notes-list">
+        {% for quick_note in quick_notes %}
+        <article class="quick-note-card{% if quick_note.is_pinned %} is-pinned{% endif %}">
+            <p>{{ quick_note.content }}</p>
+            <footer>
+                <time datetime="{{ quick_note.updated_at|date:'c' }}">{% if quick_note.is_pinned %}Pinned &middot; {% endif %}{{ quick_note.updated_at|timesince }} ago</time>
+                <div class="quick-note-actions">
+                    <form method="post" action="{% url 'notes:toggle_quick_note_pin' quick_note.id %}">
+                        {% csrf_token %}
+                        <button type="submit" class="pin-action{% if quick_note.is_pinned %} is-pinned{% endif %}"><span aria-hidden="true">&#128204;</span> {% if quick_note.is_pinned %}Unpin{% else %}Pin{% endif %}</button>
+                    </form>
+                    <form method="post" action="{% url 'notes:delete_quick_note' quick_note.id %}">
+                        {% csrf_token %}
+                        <button type="submit" class="delete-action">Delete</button>
+                    </form>
+                </div>
+            </footer>
+        </article>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="quick-notes-empty"><p>No quick notes yet. Add the first thought above.</p></div>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="form-page">
+
+    <div class="form-card">
+
+        <h1>Delete Image</h1>
+
+        <p>
+
+            Remove attached Image?
+
+        </p>
+
+        <div class="delete-preview">
+
+            {{ image_obj.image.name|cut:"notes/images/" }}
+
+        </div>
+
+        <form method="post">
+
+            {% csrf_token %}
+
+            <div class="form-actions">
+
+                <button
+                    class="danger-btn">
+
+                    Delete image
+
+                </button>
+
+                <a
+                    href="{% url 'notes:edit_note' image_obj.note.id %}"
+                    class="secondary-btn">
+
+                    Cancel
+
+                </a>
+
+            </div>
+
+        </form>
+
+    </div>
+
+</div>
+
+{% endblock %}

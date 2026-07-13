@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="topic-page">
+
+    <div class="topic-page-header">
+
+        <h1>{{ topic.title }}</h1>
+
+        <a
+            href="{% url 'topics:add_section' topic.id %}"
+            class="primary-btn">
+
+            ＋ Add Section
+
+        </a>
+
+    </div>
+
+{% if sections %}
+
+<div class="section-grid">
+
+{% for section in sections %}
+
+<div class="section-card">
+
+    <a href="{% url 'topics:section_detail' section.id %}"
+       class="section-card-link">
+
+        <div class="section-card-header">
+
+            <div>
+
+                <h3>{{ section.title }}</h3>
+
+                <span class="subject-count">
+                    {{ section.subjects.count }} Subject{{ section.subjects.count|pluralize }}
+                </span>
+
+            </div>
+
+        </div>
+
+    </a>
+
+    <div class="section-card-actions">
+
+        <a href="{% url 'topics:edit_section' section.id %}"
+           class="btn-secondary-small">
+
+            Edit
+
+        </a>
+
+        <a href="{% url 'topics:delete_section' section.id %}"
+           class="btn-danger-small">
+
+            Delete
+
+        </a>
+
+    </div>
+
+</div>
+
+{% endfor %}
+
+</div>
+
+{% else %}
+
+<div class="empty-state">
+
+    <h3>No sections yet</h3>
+
+    <p>Create your first section to organize subjects.</p>
+
+</div>
+
+{% endif %}
+
+</div>
+
+{% endblock %}

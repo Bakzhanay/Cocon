@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="form-page">
+
+    <div class="form-card">
+
+        <h1>Delete PDF</h1>
+
+        <p>
+
+            Remove attached PDF?
+
+        </p>
+
+        <div class="delete-preview">
+
+            {{ pdf_obj.pdf.name|cut:"notes/pdfs/"|truncatechars:60 }}
+
+        </div>
+
+        <form method="post">
+
+            {% csrf_token %}
+
+            <div class="form-actions">
+
+                <button
+                    class="danger-btn">
+
+                    Delete PDF
+
+                </button>
+
+                <a
+                    href="{% url 'notes:edit_note' pdf_obj.note.id %}"
+                    class="secondary-btn">
+
+                    Cancel
+
+                </a>
+
+            </div>
+
+        </form>
+
+    </div>
+
+</div>
+
+{% endblock %}

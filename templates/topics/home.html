@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="container mt-5">
+
+    <div class="d-flex justify-content-between align-items-center">
+
+        <h2>My Topics</h2>
+
+        <a href="{% url 'topics:add_topic' %}"
+           class="btn btn-primary">
+
+            Add Topic
+
+        </a>
+
+    </div>
+
+    <hr>
+
+    {% if topics %}
+
+        <ul class="list-group">
+
+            {% for topic in topics %}
+
+                <li class="list-group-item">
+
+                    <a href="{% url 'topics:topic_detail' topic.id %}">
+                    {{ topic.title }}
+                    </a>
+
+                    <div>
+
+                        <a href="{% url 'topics:edit_topic' topic.id %}"
+                        class="btn btn-sm btn-warning">
+
+                        Edit
+
+                        </a>
+
+                        <a href="{% url 'topics:delete_topic' topic.id %}"
+                        class="btn btn-sm btn-danger">
+
+                        Delete
+
+                        </a>
+
+                    </div>
+
+                </li>
+
+            {% endfor %}
+
+        </ul>
+
+    {% else %}
+
+        <p>No topics yet.</p>
+
+    {% endif %}
+
+</div>
+
+{% endblock %}

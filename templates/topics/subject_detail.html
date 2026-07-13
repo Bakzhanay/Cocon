@@ -1,0 +1,171 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="topic-page">
+
+    <a href="{% url 'topics:section_detail' subject.section.id %}" class="back-link">
+        ← Back
+    </a>
+
+<div class="topic-page-header">
+    <div>
+        <h1>{{ subject.title }}</h1>
+        <p class="page-subtitle">
+            {{ subject.section.topic.title }} / {{ subject.section.title }}
+        </p>
+    </div>
+</div>
+
+<div class="notes-section-bar">
+    <h2 class="notes-section-title">
+        Notes <span class="notes-count">{{ notes.count }}</span>
+    </h2>
+    <a href="{% url 'notes:add_subject_note' subject.id %}" class="toolbar-btn primary">
+        ＋ Add Note
+    </a>
+</div>
+
+{% if notes %}
+    {% for note in notes %}
+        <div class="note-card">
+            <div class="note-card-body">
+                <div class="note-header">
+                    <h3>{{ note.title }}</h3>
+                </div>
+
+                {% if note.reference_title or note.references or note.pdfs.exists %}
+                    <div class="note-resources">
+                        {% if note.references %}
+                        <a href="{{ note.references }}" target="_blank" class="text-decoration-none">
+                            🌐
+                            {% if note.reference_title %}
+                                {{ note.reference_title }}
+                            {% else %}
+                                {{ note.references }}
+                            {% endif %}
+                        </a>
+                        <br>
+                        {% endif %}
+
+                        {% if note.pdfs.exists %}
+                            {% for pdf_obj in note.pdfs.all %}
+                                <a href="{{ pdf_obj.pdf.url }}" target="_blank" class="text-decoration-none">
+                                    📄 {{ pdf_obj.pdf.name|cut:"notes/" }}
+                                </a><br>
+                            {% endfor %}
+                        {% endif %}
+                    </div>
+                {% endif %}
+
+                <div id="note{{ note.id }}" class="note-content" style="display:none;">
+                    {% if note.blocks.exists %}
+                        {% for block in note.blocks.all %}
+                            {% if block.block_type == "text" %}
+                                <div class="note-text-block">
+                                    {{ block.text|linebreaks }}
+                                </div>
+                            {% elif block.block_type == "image" %}
+                                <div class="note-image-block">
+                                    <img src="{{ block.image.url }}" class="note-image">
+                                </div>
+                            {% endif %}
+                        {% endfor %}
+                    {% else %}
+                        {{ note.content|linebreaks }}
+
+                        {% if note.images.all %}
+                        <div class="slider-container">
+                            <div class="slider-wrapper">
+                                {% for img_obj in note.images.all %}
+                                    <div class="slider-slide {% if forloop.first %}active{% endif %}">
+                                        <div class="image-box">
+                                            <a href="{{ img_obj.image.url }}" target="_blank" rel="noopener noreferrer" class="slider-image-link">
+                                                <img src="{{ img_obj.image.url }}" alt="Note image">
+                                            </a>
+                                        </div>
+                                        {% if img_obj.caption %}
+                                            <div class="image-caption" style="text-align: center; margin-top: 8px; font-size: 0.95em; color: #444; font-style: italic;">
+                                                {{ img_obj.caption }}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                {% endfor %}
+                            </div>
+
+                            {# Изменение: передаем 'this' в функцию moveSlide #}
+                            {% if note.images.count > 1 %}
+                                <button class="slider-btn prev-btn" onclick="moveSlide(this, -1)">&#10094;</button>
+                                <button class="slider-btn next-btn" onclick="moveSlide(this, 1)">&#10095;</button>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+
+                    {% endif %}
+                </div>
+
+                <div class="note-footer">
+                    <button class="note-toggle-btn" onclick="toggleNote({{ note.id }}, this)">
+                        Show Note
+                    </button>
+                    <div class="note-actions">
+                        <form method="post" action="{% url 'notes:toggle_pin' note.id %}" class="inline-note-action">
+                            {% csrf_token %}
+                            <button type="submit" class="note-pin-button{% if note.is_pinned %} is-pinned{% endif %}" aria-label="{% if note.is_pinned %}Unpin note{% else %}Pin note{% endif %}" aria-pressed="{% if note.is_pinned %}true{% else %}false{% endif %}" title="{% if note.is_pinned %}Unpin note{% else %}Pin note{% endif %}"><span aria-hidden="true">&#128204;</span></button>
+                        </form>
+                        <a href="{% url 'notes:edit_note' note.id %}">
+                            ✏ Edit
+                        </a>
+                        <a href="{% url 'notes:delete_note' note.id %}">
+                            🗑 Delete
+                        </a>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    {% endfor %}
+{% else %}
+    <p>No notes yet.</p>
+{% endif %}
+
+</div>
+
+<script>
+function toggleNote(id, button) {
+    const note = document.getElementById("note" + id);
+    if (note.style.display === "none") {
+        note.style.display = "block";
+        button.textContent = "Hide Note";
+    } else {
+        note.style.display = "none";
+        button.textContent = "Show Note";
+    }
+}
+
+// Изменение: Полностью изолированная логика для работы с несколькими слайдерами
+function moveSlide(button, direction) {
+    // Находим родительский контейнер именно этого слайдера
+    const container = button.closest('.slider-container');
+    // Ищем слайды только ВНУТРИ этого контейнера
+    const slides = container.querySelectorAll('.slider-slide');
+
+    if (slides.length === 0) return;
+
+    // Находим индекс текущего активного слайда в этом слайдере
+    let currentSlideIndex = Array.from(slides).findIndex(slide => slide.classList.contains('active'));
+
+    if (currentSlideIndex === -1) currentSlideIndex = 0;
+
+    // Удаляем класс active у текущего слайда
+    slides[currentSlideIndex].classList.remove('active');
+
+    // Вычисляем новый индекс внутри этого конкретного слайдера
+    currentSlideIndex = (currentSlideIndex + direction + slides.length) % slides.length;
+
+    // Добавляем класс active новому слайду
+    slides[currentSlideIndex].classList.add('active');
+}
+</script>
+
+{% endblock %}

@@ -1,0 +1,26 @@
+<div class="form-field">
+    <label>PDF Documents</label>
+    <input type="file" id="id_pdf" name="pdfs" accept=".pdf" multiple hidden>
+
+    <label for="id_pdf" class="upload-btn" id="pdfUploadBtn">
+        📄 Choose PDFs
+    </label>
+
+    <div id="pdfQueueContainer" style="margin-top: 10px;"></div>
+
+    {% if note and note.pdfs.exists %}
+        <div class="existing-files" style="margin-top: 15px; border-top: 1px solid #ccc; padding-top: 10px;">
+            <p style="font-size: 0.9em; color: #555;">Saved PDFs:</p>
+            {% for pdf_obj in note.pdfs.all %}
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; width: 100%; gap: 10px;">
+                    <span style="margin-right: 10px; font-size: 0.9em; word-break: break-all; flex: 1; min-width: 0;">
+                        📄 {{ pdf_obj.pdf.name|cut:"notes/" }}
+                    </span>
+                    <a href="{% url 'notes:delete_pdf' pdf_obj.id %}" class="remove-btn" style="color: red; text-decoration: none; font-size: 0.9em; flex-shrink: 0;">
+                        🗑 Remove
+                    </a>
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+</div>

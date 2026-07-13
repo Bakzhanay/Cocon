@@ -1,0 +1,195 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="form-page">
+
+    <div class="form-card">
+
+        <h1>Add Flashcard</h1>
+
+        <form method="post" enctype="multipart/form-data">
+
+    {% csrf_token %}
+
+    <div class="form-field">
+
+        <label for="{{ form.question.id_for_label }}">
+            Question
+        </label>
+
+        {{ form.question }}
+
+    </div>
+
+    <div class="form-field">
+
+    <label
+        for="{{ form.question_image.id_for_label }}"
+        class="upload-btn">
+
+        {% if form.instance.question_image %}
+            🔄 Replace Question Image
+        {% else %}
+            📁 Choose Image
+        {% endif %}
+
+    </label>
+
+    <input
+        type="file"
+        name="question_image"
+        id="id_question_image"
+        class="file-input"
+        accept="image/*">
+
+</div>
+
+<div class="upload-preview"
+     id="previewContainer"
+     {% if not form.instance.question_image %}style="display:none;"{% endif %}>
+
+    <img
+        id="previewImage"
+        {% if form.instance.question_image %}
+            src="{{ form.instance.question_image.url }}"
+        {% endif %}>
+
+    <br><br>
+
+    {% if form.instance.question_image %}
+
+    <a
+        href="{% url 'flashcards:delete_question_image' form.instance.id %}"
+        class="remove-btn">
+
+        🗑 Remove Image
+
+    </a>
+
+    {% endif %}
+
+</div>
+
+    <div class="form-field">
+
+        <label for="{{ form.answer.id_for_label }}">
+            Answer
+        </label>
+
+        {{ form.answer }}
+
+    </div>
+
+    <div class="form-field">
+
+        <label for="{{ form.notes.id_for_label }}">
+            Notes
+        </label>
+
+        {{ form.notes }}
+
+    </div>
+
+    <div class="form-actions">
+
+        <button
+            type="submit"
+            class="primary-btn">
+
+            Save
+
+        </button>
+
+        <a
+            href="{% if subject %}{% url 'flashcards:subject_flashcards' subject.id %}{% else %}{% url 'flashcards:section_flashcards' section.id %}{% endif %}"
+            class="secondary-btn">
+
+            Cancel
+
+        </a>
+
+    </div>
+
+</form>
+
+    </div>
+
+</div>
+
+
+<script>
+
+const input = document.getElementById("id_question_image");
+
+const previewContainer = document.getElementById("previewContainer");
+
+const previewImage = document.getElementById("previewImage");
+
+if(input){
+
+    input.addEventListener("change",function(){
+
+        const file=this.files[0];
+
+        if(!file) return;
+
+        const reader=new FileReader();
+
+        reader.onload=function(e){
+
+            previewImage.src=e.target.result;
+
+            previewContainer.style.display="block";
+
+            let remove=document.getElementById("removePreview");
+
+            if(!remove){
+
+                remove=document.createElement("button");
+
+                remove.type="button";
+
+                remove.id="removePreview";
+
+                remove.className="remove-btn";
+
+                remove.innerHTML="🗑 Remove Image";
+
+                previewContainer.appendChild(remove);
+
+            }
+
+            remove.onclick=function(){
+
+                input.value="";
+
+                previewImage.src="";
+
+                previewContainer.style.display="none";
+
+                uploadButton.innerHTML="📁 Choose Image";
+
+                remove.remove();
+
+            };
+
+        };
+
+            const uploadButton=document.querySelector(".upload-btn");
+
+                if(uploadButton){
+
+                    uploadButton.innerHTML="🔄 Replace Question Image";
+
+                }
+
+        reader.readAsDataURL(file);
+
+    });
+
+}
+
+</script>
+
+{% endblock %}
