@@ -1,4 +1,5 @@
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone as datetime_timezone
+from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase
@@ -119,3 +120,184 @@ class DashboardAndSearchTests(TestCase):
         sidebar_topics = list(dashboard.context["sidebar_topics"])
         self.assertEqual(sidebar_topics[0], pinned_topic)
         self.assertIn(first_topic, sidebar_topics)
+
+
+class FocusAnalyticsTests(TestCase):
+    def setUp(self):
+        user_model = get_user_model()
+        self.user = user_model.objects.create_user(username="analyst", password="test-pass-123")
+        self.topic = Topic.objects.create(
+            user=self.user,
+            title="IMAT",
+            weekly_goal_minutes=300,
+            priority="high",
+        )
+        self.section = Section.objects.create(
+            topic=self.topic,
+            title="Biology",
+            weekly_goal_minutes=240,
+        )
+        self.subject = Subject.objects.create(
+            section=self.section,
+            title="Cell Biology",
+            weekly_goal_minutes=120,
+            priority="high",
+        )
+        self.client.force_login(self.user)
+
+    def create_session(
+        self,
+        *,
+        duration_seconds,
+        topic=None,
+        section=None,
+        subject=None,
+        activity_type="general",
+        ended_at=None,
+    ):
+        ended_at = ended_at or timezone.now()
+        return StudySession.objects.create(
+            user=self.user,
+            topic=topic,
+            section=section,
+            subject=subject,
+            activity_type=activity_type,
+            started_at=ended_at - timedelta(seconds=duration_seconds),
+            ended_at=ended_at,
+            duration_seconds=duration_seconds,
+            planned_duration_seconds=duration_seconds,
+            status="completed",
+            completed=True,
+        )
+
+    def test_analytics_rolls_one_session_through_each_hierarchy_level(self):
+        self.create_session(
+            topic=self.topic,
+            section=self.section,
+            subject=self.subject,
+            activity_type="notes",
+            duration_seconds=600,
+        )
+        self.create_session(
+            topic=self.topic,
+            section=self.section,
+            subject=self.subject,
+            activity_type="flashcards",
+            duration_seconds=1200,
+        )
+        self.create_session(
+            topic=self.topic,
+            section=self.section,
+            activity_type="reading",
+            duration_seconds=900,
+        )
+        self.create_session(
+            topic=self.topic,
+            duration_seconds=300,
+        )
+        self.create_session(duration_seconds=420)
+
+        response = self.client.get(reverse("topics:analytics"))
+
+        self.assertEqual(response.status_code, 200)
+        topic_node = response.context["tree"][0]
+        section_node = topic_node["sections"][0]
+        subject_node = section_node["subjects"][0]
+        self.assertEqual(topic_node["seconds"], 3000)
+        self.assertEqual(section_node["seconds"], 2700)
+        self.assertEqual(subject_node["seconds"], 1800)
+        self.assertEqual(response.context["general"]["seconds"], 420)
+        self.assertEqual(response.context["total_seconds"], 3420)
+        self.assertEqual(
+            {item["type"]: item["seconds"] for item in subject_node["activities"]},
+            {"notes": 600, "flashcards": 1200},
+        )
+        self.assertContains(response, "Cell Biology")
+        self.assertContains(response, "Flashcards")
+        self.assertContains(response, "General study")
+
+    def test_attention_uses_elapsed_week_instead_of_full_goal(self):
+        fixed_now = datetime(2026, 7, 16, 12, tzinfo=datetime_timezone.utc)
+        with patch("topics.views.timezone.now", return_value=fixed_now):
+            response = self.client.get(reverse("topics:analytics"))
+
+        subject_item = next(
+            item for item in response.context["attention"]
+            if item["kind"] == "Subject" and item["title"] == "Cell Biology"
+        )
+        self.assertEqual(subject_item["status"], "behind")
+        self.assertGreater(subject_item["expected_minutes"], 0)
+        self.assertLess(subject_item["expected_minutes"], subject_item["goal_minutes"])
+        self.assertIn("behind", subject_item["attention_message"])
+
+    def test_attention_uses_last_activity_from_before_current_week(self):
+        fixed_now = datetime(2026, 7, 16, 12, tzinfo=datetime_timezone.utc)
+        self.create_session(
+            topic=self.topic,
+            section=self.section,
+            subject=self.subject,
+            duration_seconds=600,
+            ended_at=fixed_now - timedelta(days=4),
+        )
+
+        with patch("topics.views.timezone.now", return_value=fixed_now):
+            response = self.client.get(reverse("topics:analytics"))
+
+        subject_item = next(
+            item for item in response.context["attention"]
+            if item["kind"] == "Subject" and item["title"] == "Cell Biology"
+        )
+        self.assertIn("No focus for 4 days", subject_item["attention_message"])
+
+    def test_thirty_day_period_includes_sessions_outside_current_week(self):
+        self.create_session(
+            topic=self.topic,
+            section=self.section,
+            subject=self.subject,
+            duration_seconds=1800,
+            ended_at=timezone.now() - timedelta(days=10),
+        )
+
+        week_response = self.client.get(reverse("topics:analytics"), {"period": "week"})
+        month_response = self.client.get(reverse("topics:analytics"), {"period": "30d"})
+
+        self.assertEqual(week_response.context["total_seconds"], 0)
+        self.assertEqual(month_response.context["total_seconds"], 1800)
+
+    def test_parent_goals_can_be_derived_from_children(self):
+        self.topic.weekly_goal_minutes = 0
+        self.topic.save(update_fields=["weekly_goal_minutes"])
+        self.section.weekly_goal_minutes = 0
+        self.section.save(update_fields=["weekly_goal_minutes"])
+
+        response = self.client.get(reverse("topics:analytics"))
+
+        topic_node = response.context["tree"][0]
+        section_node = topic_node["sections"][0]
+        self.assertEqual(topic_node["goal_minutes"], 120)
+        self.assertEqual(section_node["goal_minutes"], 120)
+        self.assertTrue(topic_node["goal_is_derived"])
+        self.assertTrue(section_node["goal_is_derived"])
+
+    def test_analytics_does_not_include_another_users_focus(self):
+        other = get_user_model().objects.create_user(username="other", password="test-pass-123")
+        other_topic = Topic.objects.create(user=other, title="Private topic")
+        StudySession.objects.create(
+            user=other,
+            topic=other_topic,
+            started_at=timezone.now() - timedelta(minutes=20),
+            ended_at=timezone.now(),
+            duration_seconds=1200,
+            planned_duration_seconds=1200,
+            status="completed",
+            completed=True,
+        )
+
+        response = self.client.get(reverse("topics:analytics"))
+
+        self.assertNotContains(response, "Private topic")
+        self.assertEqual(response.context["total_seconds"], 0)
+
+    def test_dashboard_links_to_full_analytics(self):
+        response = self.client.get(reverse("topics:home"))
+        self.assertContains(response, reverse("topics:analytics"))

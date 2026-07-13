@@ -5,6 +5,7 @@ app_name = "topics"
 
 urlpatterns = [
     path("", views.dashboard, name="home"),
+    path("analytics/", views.analytics, name="analytics"),
     path(
         "topics/add/",
         views.add_topic,

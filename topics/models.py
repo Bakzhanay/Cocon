@@ -3,6 +3,12 @@ from django.conf import settings
 
 # Create your models here.
 class Topic(models.Model):
+    PRIORITY_CHOICES = [
+        ("low", "Low"),
+        ("normal", "Normal"),
+        ("high", "High"),
+    ]
+
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
@@ -13,6 +19,17 @@ class Topic(models.Model):
 
     is_pinned = models.BooleanField(default=False)
 
+    weekly_goal_minutes = models.PositiveIntegerField(
+        default=0,
+        help_text="Optional weekly goal. Leave at zero to derive it from sections.",
+    )
+
+    priority = models.CharField(
+        max_length=10,
+        choices=PRIORITY_CHOICES,
+        default="normal",
+    )
+
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -22,6 +39,8 @@ class Topic(models.Model):
         return self.title
 
 class Section(models.Model):
+    PRIORITY_CHOICES = Topic.PRIORITY_CHOICES
+
     topic = models.ForeignKey(
         Topic,
         on_delete=models.CASCADE,
@@ -29,6 +48,17 @@ class Section(models.Model):
     )
 
     title = models.CharField(max_length=100)
+
+    weekly_goal_minutes = models.PositiveIntegerField(
+        default=0,
+        help_text="Optional weekly goal. Leave at zero to derive it from subjects.",
+    )
+
+    priority = models.CharField(
+        max_length=10,
+        choices=PRIORITY_CHOICES,
+        default="normal",
+    )
 
     created_at = models.DateTimeField(auto_now_add=True)
 

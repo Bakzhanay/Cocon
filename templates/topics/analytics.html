@@ -1,0 +1,180 @@
+{% extends "base.html" %}
+
+{% block title %}Focus analytics · Cocon{% endblock %}
+
+{% block content %}
+<div class="analytics-shell">
+    <header class="analytics-hero">
+        <div>
+            <span class="dashboard-eyebrow">Your focus map</span>
+            <h1>Focus analytics</h1>
+            <p>See where completed Pomodoro sessions go and which goals need a little more room this week.</p>
+        </div>
+        <nav class="analytics-periods" aria-label="Analytics period">
+            <a href="?period=week" class="{% if period == 'week' %}is-active{% endif %}">This week</a>
+            <a href="?period=30d" class="{% if period == '30d' %}is-active{% endif %}">30 days</a>
+            <a href="?period=all" class="{% if period == 'all' %}is-active{% endif %}">All time</a>
+        </nav>
+    </header>
+
+    <section class="analytics-summary" aria-label="{{ period_label }} summary">
+        <article class="analytics-summary-card is-primary">
+            <span>{{ period_label }}</span>
+            <strong>{{ total_duration }}</strong>
+            <p>Completed focus time</p>
+        </article>
+        <article class="analytics-summary-card">
+            <span>Sessions</span>
+            <strong>{{ session_count }}</strong>
+            <p>Completed Pomodoros</p>
+        </article>
+        <article class="analytics-summary-card">
+            <span>Most focused</span>
+            <strong>{% if most_focused %}{{ most_focused.title }}{% else %}—{% endif %}</strong>
+            <p>{% if most_focused %}{{ most_focused.duration }} in this period{% else %}Complete a session to begin{% endif %}</p>
+        </article>
+        <article class="analytics-summary-card">
+            <span>Weekly pace</span>
+            <strong>{{ on_track_count }} / {{ tracked_count }}</strong>
+            <p>{% if behind_count %}{{ behind_count }} goal{{ behind_count|pluralize }} need attention{% else %}All tracked goals are on pace{% endif %}</p>
+        </article>
+    </section>
+
+    <div class="analytics-layout">
+        <section class="analytics-panel analytics-tree-panel">
+            <div class="analytics-panel-heading">
+                <div><span class="dashboard-eyebrow">Hierarchy</span><h2>Where your time went</h2></div>
+                <span>{{ period_label }}</span>
+            </div>
+
+            {% if tree %}
+            <div class="analytics-tree">
+                {% for topic_node in tree %}
+                <details class="analytics-node analytics-topic" open>
+                    <summary>
+                        <span class="analytics-chevron" aria-hidden="true"></span>
+                        <span class="analytics-node-copy">
+                            <a href="{{ topic_node.url }}">{{ topic_node.title }}</a>
+                            <small>Topic{% if topic_node.goal_is_derived %} · goal derived from sections{% endif %}</small>
+                        </span>
+                        <span class="analytics-node-duration">{{ topic_node.duration }}</span>
+                        {% if topic_node.goal_minutes %}<span class="pace-pill pace-{{ topic_node.status }}">{{ topic_node.status_label }}</span>{% endif %}
+                    </summary>
+                    {% if show_goal_progress and topic_node.goal_minutes %}
+                    <div class="analytics-goal-row">
+                        <span>This week {{ topic_node.week_minutes }} / {{ topic_node.goal_minutes }} min</span>
+                        <div><i style="width:{{ topic_node.progress }}%"></i></div>
+                    </div>
+                    {% endif %}
+                    <div class="analytics-children">
+                        {% if topic_node.direct_activities %}
+                        <div class="analytics-direct-group">
+                            <span>Topic-level focus</span>
+                            {% for activity in topic_node.direct_activities %}
+                            <div class="analytics-activity"><span>{{ activity.label }}</span><strong>{{ activity.duration }}</strong></div>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+
+                        {% for section_node in topic_node.sections %}
+                        <details class="analytics-node analytics-section" {% if section_node.seconds %}open{% endif %}>
+                            <summary>
+                                <span class="analytics-chevron" aria-hidden="true"></span>
+                                <span class="analytics-node-copy">
+                                    <a href="{{ section_node.url }}">{{ section_node.title }}</a>
+                                    <small>Section{% if section_node.goal_is_derived %} · goal derived from subjects{% endif %}</small>
+                                </span>
+                                <span class="analytics-node-duration">{{ section_node.duration }}</span>
+                                {% if section_node.goal_minutes %}<span class="pace-pill pace-{{ section_node.status }}">{{ section_node.status_label }}</span>{% endif %}
+                            </summary>
+                            {% if show_goal_progress and section_node.goal_minutes %}
+                            <div class="analytics-goal-row">
+                                <span>This week {{ section_node.week_minutes }} / {{ section_node.goal_minutes }} min</span>
+                                <div><i style="width:{{ section_node.progress }}%"></i></div>
+                            </div>
+                            {% endif %}
+                            <div class="analytics-children">
+                                {% if section_node.direct_activities %}
+                                <div class="analytics-direct-group">
+                                    <span>Section-level focus</span>
+                                    {% for activity in section_node.direct_activities %}
+                                    <div class="analytics-activity"><span>{{ activity.label }}</span><strong>{{ activity.duration }}</strong></div>
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+
+                                {% for subject_node in section_node.subjects %}
+                                <details class="analytics-node analytics-subject" {% if subject_node.seconds %}open{% endif %}>
+                                    <summary>
+                                        <span class="analytics-chevron" aria-hidden="true"></span>
+                                        <span class="analytics-node-copy">
+                                            <a href="{{ subject_node.url }}">{{ subject_node.title }}</a>
+                                            <small>Subject</small>
+                                        </span>
+                                        <span class="analytics-node-duration">{{ subject_node.duration }}</span>
+                                        {% if subject_node.goal_minutes %}<span class="pace-pill pace-{{ subject_node.status }}">{{ subject_node.status_label }}</span>{% endif %}
+                                    </summary>
+                                    {% if show_goal_progress and subject_node.goal_minutes %}
+                                    <div class="analytics-goal-row">
+                                        <span>This week {{ subject_node.week_minutes }} / {{ subject_node.goal_minutes }} min</span>
+                                        <div><i style="width:{{ subject_node.progress }}%"></i></div>
+                                    </div>
+                                    {% endif %}
+                                    <div class="analytics-activities">
+                                        {% for activity in subject_node.activities %}
+                                        <div class="analytics-activity activity-{{ activity.type }}"><span>{{ activity.label }}</span><strong>{{ activity.duration }}</strong></div>
+                                        {% empty %}
+                                        <span class="analytics-zero">No focused activity in this period.</span>
+                                        {% endfor %}
+                                    </div>
+                                </details>
+                                {% empty %}
+                                <span class="analytics-zero">No subjects in this section yet.</span>
+                                {% endfor %}
+                            </div>
+                        </details>
+                        {% empty %}
+                        <span class="analytics-zero">No sections in this topic yet.</span>
+                        {% endfor %}
+                    </div>
+                </details>
+                {% endfor %}
+
+                {% if general.seconds %}
+                <div class="analytics-node analytics-general">
+                    <div class="analytics-general-heading"><div><strong>General study</strong><span>Sessions started from the dashboard</span></div><strong>{{ general.duration }}</strong></div>
+                    <div class="analytics-activities">
+                        {% for activity in general.activities %}
+                        <div class="analytics-activity activity-{{ activity.type }}"><span>{{ activity.label }}</span><strong>{{ activity.duration }}</strong></div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+            {% else %}
+            <div class="dashboard-empty"><p>Create your first topic to start building a focus map.</p></div>
+            {% endif %}
+        </section>
+
+        <aside class="analytics-panel analytics-attention-panel">
+            <div class="analytics-panel-heading">
+                <div><span class="dashboard-eyebrow">Weekly pace</span><h2>Needs attention</h2></div>
+            </div>
+            <p class="analytics-explanation">Cocon compares completed time with how much of the week has passed, so unfinished goals are not automatically marked as late.</p>
+            {% if attention %}
+            <div class="analytics-attention-list">
+                {% for item in attention %}
+                <a href="{{ item.url }}">
+                    <div><span>{{ item.kind }} · {{ item.priority|title }} priority</span><strong>{{ item.title }}</strong><p>{{ item.attention_message }}</p></div>
+                    <span class="pace-pill pace-behind">{{ item.week_minutes }} / {{ item.goal_minutes }}m</span>
+                </a>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="analytics-on-track"><span>✓</span><strong>Everything is on pace</strong><p>Your tracked goals match this point in the week.</p></div>
+            {% endif %}
+            <a class="analytics-settings-link" href="{% url 'users:preferences' %}">Edit overall focus goals &rarr;</a>
+        </aside>
+    </div>
+</div>
+{% endblock %}

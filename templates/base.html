@@ -19,6 +19,8 @@
 
     <link rel="stylesheet" href="{% static 'css/dashboard.css' %}?v=5">
 
+    <link rel="stylesheet" href="{% static 'css/analytics.css' %}?v=1">
+
     <link rel="stylesheet" href="{% static 'css/flashcards.css' %}?v=2">
 
     <link rel="stylesheet" href="{% static 'css/quick_notes.css' %}?v=1">
@@ -232,6 +234,8 @@
             </form>
 
             <div class="user-area">
+
+                <a href="{% url 'topics:analytics' %}" class="topbar-analytics-link">Analytics</a>
 
                 <div class="mode-controls" aria-label="Display modes">
                     <button id="themeToggle" type="button" aria-pressed="false" title="Toggle dark mode">&#9680;</button>

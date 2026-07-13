@@ -32,8 +32,10 @@ database or uploaded learning files are included in the repository.
 - Run a persistent Pomodoro timer with configurable study and break durations.
 - Attribute completed focus sessions to a topic, section, subject, notes, or
   flashcards—even when the timer continues in another browser tab.
-- Show weekly focus balance, streaks, goals, review backlog, recent activity,
-  and a calendar of completed sessions.
+- Roll completed sessions up through Topic → Section → Subject → activity,
+  with weekly pace warnings for goals that are starting to fall behind.
+- Show focus balance, streaks, goals, review backlog, recent activity, and a
+  calendar of completed sessions.
 - Plan tasks with due dates and priorities.
 - Play looping browser-generated soundscapes without external audio files.
 - Switch between light, dark, and low-stimulation interfaces.

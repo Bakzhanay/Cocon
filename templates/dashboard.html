@@ -99,7 +99,7 @@
 
     <div class="dashboard-detail-grid">
         <section class="dashboard-panel subject-focus-panel">
-            <div class="panel-heading"><div><span class="dashboard-eyebrow">Balance</span><h2>Focus by area</h2></div><span class="panel-note">This week</span></div>
+            <div class="panel-heading"><div><span class="dashboard-eyebrow">Balance</span><h2>Focus by area</h2></div><a class="panel-link" href="{% url 'topics:analytics' %}">View analytics &rarr;</a></div>
             {% if focus_by_topic %}
                 <div class="subject-focus-list">
                     {% for item in focus_by_topic %}
@@ -116,18 +116,18 @@
         </section>
 
         <section class="dashboard-panel attention-panel">
-            <div class="panel-heading"><div><span class="dashboard-eyebrow">Weekly goals</span><h2>Needs attention</h2></div></div>
+            <div class="panel-heading"><div><span class="dashboard-eyebrow">Weekly goals</span><h2>Needs attention</h2></div><a class="panel-link" href="{% url 'topics:analytics' %}">Open &rarr;</a></div>
             {% if needs_attention %}
                 <div class="attention-list">
                     {% for item in needs_attention %}
-                    <a href="{% url 'topics:subject_detail' item.subject.id %}">
-                        <div><strong>{{ item.subject.title }}</strong><span>{{ item.remaining_minutes }} minutes left</span></div>
-                        <span class="priority-badge priority-{{ item.subject.priority }}">{{ item.subject.get_priority_display }}</span>
+                    <a href="{{ item.url }}">
+                        <div><strong>{{ item.title }}</strong><span>{{ item.kind }} · {{ item.attention_message }}</span></div>
+                        <span class="priority-badge priority-{{ item.priority }}">{{ item.status_label }}</span>
                     </a>
                     {% endfor %}
                 </div>
             {% else %}
-                <div class="dashboard-empty"><p>All weekly subject goals are on track.</p></div>
+                <div class="dashboard-empty"><p>Everything is keeping pace with this point in the week.</p></div>
             {% endif %}
         </section>
 

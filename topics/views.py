@@ -1,6 +1,7 @@
 from django.utils import timezone
 from django.db.models import Sum
 from study.models import StudySession
+from study.analytics import build_focus_analytics
 from datetime import datetime, time, timedelta
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
@@ -561,87 +562,17 @@ def dashboard(request):
         | Q(next_review_at__isnull=True, learned=False)
     ).count()
 
-    subject_seconds = {
-        item["subject_id"]: item["total"] or 0
-        for item in week_sessions.exclude(subject_id=None)
-        .values("subject_id")
-        .annotate(total=Sum("duration_seconds"))
-    }
-    subjects = list(
-        Subject.objects
-        .filter(section__topic__user=request.user)
-        .select_related("section", "section__topic")
+    focus = build_focus_analytics(
+        request.user,
+        week_sessions,
+        week_sessions,
+        now,
+        week_start_at,
+        completed_sessions,
     )
-    focus_by_subject = []
-    needs_attention = []
-    priority_weight = {"high": 0, "normal": 1, "low": 2}
-    for subject in subjects:
-        seconds = subject_seconds.get(subject.id, 0)
-        goal_seconds = max(1, subject.weekly_goal_minutes * 60)
-        progress = min(100, round((seconds / goal_seconds) * 100))
-        item = {
-            "subject": subject,
-            "minutes": round(seconds / 60),
-            "goal_minutes": subject.weekly_goal_minutes,
-            "progress": progress,
-            "remaining_minutes": max(0, subject.weekly_goal_minutes - round(seconds / 60)),
-            "ratio": seconds / goal_seconds,
-        }
-        focus_by_subject.append(item)
-        if progress < 100:
-            needs_attention.append(item)
-
-    focus_by_subject.sort(key=lambda item: item["minutes"], reverse=True)
-    max_subject_minutes = max([item["minutes"] for item in focus_by_subject] + [1])
-    for item in focus_by_subject:
-        item["bar_width"] = max(3, round((item["minutes"] / max_subject_minutes) * 100))
-    needs_attention.sort(key=lambda item: (
-        priority_weight[item["subject"].priority],
-        item["ratio"],
-    ))
-
-    topic_seconds = {
-        item["topic_id"]: item["total"] or 0
-        for item in week_sessions.exclude(topic_id=None)
-        .values("topic_id")
-        .annotate(total=Sum("duration_seconds"))
-    }
-    section_seconds = {
-        item["section_id"]: item["total"] or 0
-        for item in week_sessions.exclude(section_id=None)
-        .values("section_id")
-        .annotate(total=Sum("duration_seconds"))
-    }
     user_topics = list(Topic.objects.filter(user=request.user))
-    sections_by_topic = {}
-    for section in Section.objects.filter(topic__user=request.user).select_related("topic"):
-        sections_by_topic.setdefault(section.topic_id, []).append({
-            "section": section,
-            "minutes": round(section_seconds.get(section.id, 0) / 60),
-        })
-    focus_by_topic = [
-        {
-            "topic": topic,
-            "minutes": round(topic_seconds.get(topic.id, 0) / 60),
-            "sections": sections_by_topic.get(topic.id, []),
-        }
-        for topic in user_topics
-    ]
-    focus_by_topic.sort(key=lambda item: item["minutes"], reverse=True)
-    max_topic_minutes = max([item["minutes"] for item in focus_by_topic] + [1])
-    for item in focus_by_topic:
-        item["bar_width"] = max(3, round((item["minutes"] / max_topic_minutes) * 100))
-        item["sections"].sort(key=lambda section_item: section_item["minutes"], reverse=True)
-        section_total = sum(section_item["minutes"] for section_item in item["sections"])
-        details = []
-        direct_minutes = max(0, item["minutes"] - section_total)
-        if direct_minutes:
-            details.append(f"Topic-level {direct_minutes}m")
-        details.extend(
-            f"{section_item['section'].title} {section_item['minutes']}m"
-            for section_item in item["sections"][:3]
-        )
-        item["detail"] = " · ".join(details) or "No focus yet"
+    focus_by_topic = focus["tree"]
+    needs_attention = focus["attention"]
 
     recent_session = (
         completed_sessions
@@ -676,3 +607,63 @@ def dashboard(request):
         "today": today,
     }
     return render(request, "dashboard.html", context)
+
+
+@login_required
+def analytics(request):
+    preferences, _ = UserPreferences.objects.get_or_create(user=request.user)
+    try:
+        user_timezone = ZoneInfo(preferences.timezone)
+    except ZoneInfoNotFoundError:
+        user_timezone = ZoneInfo("UTC")
+
+    now = timezone.now().astimezone(user_timezone)
+    today = now.date()
+    week_start = today - timedelta(days=today.weekday())
+    week_start_at = datetime.combine(week_start, time.min, tzinfo=user_timezone)
+    week_end_at = week_start_at + timedelta(days=7)
+
+    period = request.GET.get("period", "week")
+    if period not in {"week", "30d", "all"}:
+        period = "week"
+
+    completed_sessions = StudySession.objects.filter(
+        user=request.user,
+        completed=True,
+        status="completed",
+    )
+    week_sessions = completed_sessions.filter(
+        ended_at__gte=week_start_at,
+        ended_at__lt=week_end_at,
+    )
+
+    if period == "30d":
+        period_start = datetime.combine(
+            today - timedelta(days=29),
+            time.min,
+            tzinfo=user_timezone,
+        )
+        period_sessions = completed_sessions.filter(ended_at__gte=period_start)
+        period_label = "Last 30 days"
+    elif period == "all":
+        period_sessions = completed_sessions
+        period_label = "All time"
+    else:
+        period_sessions = week_sessions
+        period_label = "This week"
+
+    focus = build_focus_analytics(
+        request.user,
+        period_sessions,
+        week_sessions,
+        now,
+        week_start_at,
+        completed_sessions,
+    )
+    return render(request, "topics/analytics.html", {
+        **focus,
+        "period": period,
+        "period_label": period_label,
+        "show_goal_progress": period == "week",
+        "attention": focus["attention"][:8],
+    })
