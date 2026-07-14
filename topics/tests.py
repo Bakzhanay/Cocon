@@ -49,7 +49,8 @@ class DashboardAndSearchTests(TestCase):
         self.assertContains(response, "Continue notes")
         self.assertContains(
             response,
-            reverse("topics:subject_detail", args=[self.subject.id]),
+            reverse("topics:subject_detail", args=[self.subject.id]) + "?focus=resume",
+            count=2,
         )
         self.assertContains(response, reverse("flashcards:due_flashcards"))
 

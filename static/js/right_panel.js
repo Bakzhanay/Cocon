@@ -726,6 +726,18 @@
         sessionStorage.setItem("studyflow-right-panel-collapsed", String(collapsed));
     }
 
+    function openFocusPanel(options = {}) {
+        const { smooth = true } = options;
+        setPanelCollapsed(false);
+        window.setTimeout(() => {
+            document.querySelector(".timer-card")?.scrollIntoView({
+                behavior: smooth ? "smooth" : "auto",
+                block: "start",
+            });
+            startButton.focus({ preventScroll: true });
+        }, smooth ? 300 : 0);
+    }
+
     const savedPanelPreference = sessionStorage.getItem("studyflow-right-panel-collapsed");
     const panelCollapsed = savedPanelPreference === null || savedPanelPreference === "true";
     setPanelCollapsed(panelCollapsed);
@@ -743,14 +755,12 @@
     });
 
     document.querySelectorAll("[data-open-focus-panel]").forEach((trigger) => {
-        trigger.addEventListener("click", () => {
-            setPanelCollapsed(false);
-            window.setTimeout(() => {
-                document.querySelector(".timer-card")?.scrollIntoView({ behavior: "smooth", block: "start" });
-                startButton.focus({ preventScroll: true });
-            }, 300);
-        });
+        trigger.addEventListener("click", () => openFocusPanel());
     });
+
+    if (new URLSearchParams(window.location.search).get("focus") === "resume") {
+        openFocusPanel({ smooth: false });
+    }
 
     startButton.addEventListener("click", startTimer);
     pauseButton.addEventListener("click", pauseTimer);

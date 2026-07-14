@@ -9,6 +9,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.db.models import Count
 from django.http import HttpResponseBadRequest
+from django.urls import reverse
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 
@@ -32,6 +33,28 @@ def _dashboard_widget_preferences(preferences, field_name):
     if not isinstance(saved_widgets, list):
         return []
     return [widget for widget in DASHBOARD_WIDGETS if widget in saved_widgets]
+
+
+def _study_session_resume_url(session):
+    """Return the most specific study page that still exists for a session."""
+    if not session:
+        return None
+
+    if session.subject:
+        route_name = (
+            "flashcards:subject_flashcards"
+            if session.activity_type == "flashcards"
+            else "topics:subject_detail"
+        )
+        path = reverse(route_name, args=[session.subject_id])
+    elif session.section:
+        path = reverse("topics:section_detail", args=[session.section_id])
+    elif session.topic:
+        path = reverse("topics:topic_detail", args=[session.topic_id])
+    else:
+        return None
+
+    return f"{path}?focus=resume"
 
 # Create your views here.
 @login_required
@@ -618,6 +641,7 @@ def dashboard(request):
         "focus_by_topic": focus_by_topic[:6],
         "needs_attention": needs_attention[:4],
         "recent_session": recent_session,
+        "recent_session_resume_url": _study_session_resume_url(recent_session),
         "recent_session_minutes": round(recent_session.duration_seconds / 60) if recent_session else 0,
         "recent_sessions": completed_sessions.select_related("topic", "section", "subject").order_by("-ended_at")[:6],
         "recent_notes": Note.objects.filter(owner=request.user).order_by("-updated_at")[:4],

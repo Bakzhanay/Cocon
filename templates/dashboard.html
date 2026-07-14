@@ -77,7 +77,18 @@
         </section>
 
         <section class="dashboard-panel continue-panel">
-            <div class="panel-heading"><div><span class="dashboard-eyebrow">Pick up where you left off</span><h2>Continue studying</h2></div></div>
+            <div class="panel-heading">
+                <div>
+                    <span class="dashboard-eyebrow">Pick up where you left off</span>
+                    <h2>
+                        {% if recent_session_resume_url %}
+                        <a class="continue-heading-action" href="{{ recent_session_resume_url }}">Continue studying <span aria-hidden="true">&rarr;</span></a>
+                        {% else %}
+                        <button class="continue-heading-action" type="button" data-open-focus-panel>Continue studying <span aria-hidden="true">&rarr;</span></button>
+                        {% endif %}
+                    </h2>
+                </div>
+            </div>
             {% if recent_session %}
                 <div class="continue-context">
                     {% if recent_session.subject or recent_session.subject_title or recent_session.section or recent_session.section_title or recent_session.topic or recent_session.topic_title %}
@@ -89,16 +100,18 @@
                     {% endif %}
                     <p>{{ recent_session_minutes }} focused minutes in your last session.</p>
                 </div>
-                {% if recent_session.subject %}
+                {% if recent_session_resume_url %}
+                    {% if recent_session.subject %}
                     {% if recent_session.activity_type == "flashcards" %}
-                    <a class="dashboard-action" href="{% url 'flashcards:subject_flashcards' recent_session.subject.id %}">Review flashcards</a>
+                    <a class="dashboard-action" href="{{ recent_session_resume_url }}">Review flashcards</a>
                     {% else %}
-                    <a class="dashboard-action" href="{% url 'topics:subject_detail' recent_session.subject.id %}">Continue notes</a>
+                    <a class="dashboard-action" href="{{ recent_session_resume_url }}">Continue notes</a>
                     {% endif %}
-                {% elif recent_session.section %}
-                    <a class="dashboard-action" href="{% url 'topics:section_detail' recent_session.section.id %}">Open section</a>
-                {% elif recent_session.topic %}
-                    <a class="dashboard-action" href="{% url 'topics:topic_detail' recent_session.topic.id %}">Open topic</a>
+                    {% elif recent_session.section %}
+                    <a class="dashboard-action" href="{{ recent_session_resume_url }}">Open section</a>
+                    {% else %}
+                    <a class="dashboard-action" href="{{ recent_session_resume_url }}">Open topic</a>
+                    {% endif %}
                 {% else %}
                     <button class="dashboard-action dashboard-action-button" type="button" data-open-focus-panel>Start another session</button>
                 {% endif %}
