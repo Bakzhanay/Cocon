@@ -729,6 +729,14 @@
     function openFocusPanel(options = {}) {
         const { smooth = true } = options;
         setPanelCollapsed(false);
+        if (
+            learningSidebar
+            && !document.documentElement.classList.contains("low-stimulus")
+        ) {
+            learningSidebar.classList.remove("collapsed");
+            appLayout.classList.remove("left-sidebar-is-collapsed");
+            localStorage.setItem("cocon-left-sidebar-collapsed", "false");
+        }
         window.setTimeout(() => {
             document.querySelector(".timer-card")?.scrollIntoView({
                 behavior: smooth ? "smooth" : "auto",
