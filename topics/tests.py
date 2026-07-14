@@ -132,6 +132,7 @@ class DashboardAndSearchTests(TestCase):
             {
                 "title": "Cell",
                 "description": subject_description,
+                "color": "sage",
                 "weekly_goal_minutes": 120,
                 "priority": "normal",
             },
@@ -149,6 +150,7 @@ class DashboardAndSearchTests(TestCase):
         section_page = self.client.get(reverse("topics:section_detail", args=[section.id]))
         self.assertContains(section_page, section_description)
         self.assertContains(section_page, subject_description)
+        self.assertContains(section_page, "subject-card subject-color-sage")
         self.assertContains(
             self.client.get(reverse("topics:subject_detail", args=[subject.id])),
             subject_description,
@@ -172,6 +174,7 @@ class DashboardAndSearchTests(TestCase):
             {
                 "title": self.subject.title,
                 "description": subject_description,
+                "color": "lavender",
                 "weekly_goal_minutes": 120,
                 "priority": "normal",
             },
@@ -181,6 +184,24 @@ class DashboardAndSearchTests(TestCase):
         self.subject.refresh_from_db()
         self.assertEqual(self.section.description, section_description)
         self.assertEqual(self.subject.description, subject_description)
+        self.assertEqual(self.subject.color, "lavender")
+
+    def test_subject_card_color_rejects_unknown_palette_value(self):
+        response = self.client.post(
+            reverse("topics:edit_subject", args=[self.subject.id]),
+            {
+                "title": self.subject.title,
+                "description": self.subject.description,
+                "color": "neon",
+                "weekly_goal_minutes": 120,
+                "priority": "normal",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Select a valid choice")
+        self.subject.refresh_from_db()
+        self.assertEqual(self.subject.color, "default")
 
     def test_search_finds_section_and_subject_descriptions(self):
         self.section.description = "Molecular foundations"

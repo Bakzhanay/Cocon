@@ -83,6 +83,17 @@ class Subject(models.Model):
         ("high", "High"),
     ]
 
+    COLOR_CHOICES = [
+        ("default", "Default"),
+        ("sage", "Sage"),
+        ("sky", "Sky blue"),
+        ("lavender", "Lavender"),
+        ("rose", "Rose"),
+        ("peach", "Peach"),
+        ("butter", "Soft yellow"),
+        ("mint", "Mint"),
+    ]
+
     section = models.ForeignKey(
         Section,
         on_delete=models.CASCADE,
@@ -98,6 +109,12 @@ class Subject(models.Model):
     )
 
     is_pinned = models.BooleanField(default=False)
+
+    color = models.CharField(
+        max_length=12,
+        choices=COLOR_CHOICES,
+        default="default",
+    )
 
     created_at = models.DateTimeField(auto_now_add=True)
 

@@ -48,7 +48,7 @@ class SectionForm(forms.ModelForm):
 class SubjectForm(forms.ModelForm):
     class Meta:
         model = Subject
-        fields = ["title", "description", "weekly_goal_minutes", "priority"]
+        fields = ["title", "description", "color", "weekly_goal_minutes", "priority"]
 
         widgets = {
             "title": forms.TextInput(
@@ -65,6 +65,7 @@ class SubjectForm(forms.ModelForm):
                     "maxlength": 240,
                 }
             ),
+            "color": forms.RadioSelect(),
             "weekly_goal_minutes": forms.NumberInput(
                 attrs={
                     "class": "form-control",

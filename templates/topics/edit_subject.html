@@ -39,6 +39,21 @@
                 {{ form.description.errors }}
             </div>
 
+            <fieldset class="form-group card-color-fieldset">
+                <legend>Card color</legend>
+                <div class="card-color-options">
+                    {% for choice in form.color %}
+                    <label class="card-color-option">
+                        {{ choice.tag }}
+                        <span class="card-color-swatch subject-color-{{ choice.data.value }}" aria-hidden="true"></span>
+                        <span>{{ choice.choice_label }}</span>
+                    </label>
+                    {% endfor %}
+                </div>
+                <small class="form-hint">Choose a calm color to recognize this subject at a glance.</small>
+                {{ form.color.errors }}
+            </fieldset>
+
             <div class="form-group">
                 <label for="{{ form.weekly_goal_minutes.id_for_label }}">Weekly goal (minutes)</label>
                 {{ form.weekly_goal_minutes }}

@@ -495,6 +495,66 @@ html.dark-mode .entity-pin-button.is-pinned {
     color: #d5e9e1;
 }
 
+html.dark-mode .subject-color-default {
+    --subject-card-bg:var(--dark-surface);
+    --subject-card-border:var(--border);
+}
+
+html.dark-mode .subject-color-sage {
+    --subject-card-bg:#24342e;
+    --subject-card-border:#3e5a50;
+}
+
+html.dark-mode .subject-color-sky {
+    --subject-card-bg:#25333e;
+    --subject-card-border:#3e596d;
+}
+
+html.dark-mode .subject-color-lavender {
+    --subject-card-bg:#312b3e;
+    --subject-card-border:#594b70;
+}
+
+html.dark-mode .subject-color-rose {
+    --subject-card-bg:#3b2b2e;
+    --subject-card-border:#68484f;
+}
+
+html.dark-mode .subject-color-peach {
+    --subject-card-bg:#3a3028;
+    --subject-card-border:#685344;
+}
+
+html.dark-mode .subject-color-butter {
+    --subject-card-bg:#373321;
+    --subject-card-border:#665e35;
+}
+
+html.dark-mode .subject-color-mint {
+    --subject-card-bg:#213733;
+    --subject-card-border:#39625a;
+}
+
+html.dark-mode .subject-card[class*="subject-color-"] {
+    border-color:var(--subject-card-border,var(--border));
+    background:var(--subject-card-bg,var(--dark-surface));
+}
+
+html.dark-mode .card-color-fieldset legend,
+html.dark-mode .card-color-option {
+    color:var(--dark-heading);
+}
+
+html.dark-mode .card-color-option {
+    border-color:#465049;
+    background:#242a26;
+}
+
+html.dark-mode .card-color-option:hover {
+    border-color:#59736a;
+    background:#2d3631;
+}
+
 html.dark-mode .inline-note-action .note-pin-button,
 html.dark-mode .quick-note-actions button {
     border-color: #465049;
