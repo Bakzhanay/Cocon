@@ -66,6 +66,13 @@ class DashboardAndSearchTests(TestCase):
         self.assertContains(response, "Start another session")
         self.assertContains(response, "data-open-focus-panel")
 
+    def test_new_user_is_invited_to_start_their_first_study_session(self):
+        response = self.client.get(reverse("topics:home"))
+
+        self.assertContains(response, "Start study session")
+        self.assertContains(response, "data-open-focus-panel")
+        self.assertNotContains(response, "Start another session")
+
     def test_dashboard_chart_shows_the_last_seven_days(self):
         now = timezone.now()
         yesterday = now - timedelta(days=1)
