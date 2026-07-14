@@ -61,16 +61,28 @@
 
                 </div>
 
-                <a href="{% url 'topics:toggle_subject' subject.id %}"
-                   class="subject-check">
+                <div class="subject-top-actions">
+                    <form method="post" action="{% url 'topics:toggle_subject_pin' subject.id %}" class="entity-pin-form">
+                        {% csrf_token %}
+                        <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                        <button type="submit"
+                                class="entity-pin-button{% if subject.is_pinned %} is-pinned{% endif %}"
+                                aria-label="{% if subject.is_pinned %}Unpin {{ subject.title }}{% else %}Pin {{ subject.title }}{% endif %}"
+                                aria-pressed="{% if subject.is_pinned %}true{% else %}false{% endif %}"
+                                title="{% if subject.is_pinned %}Unpin{% else %}Pin{% endif %}">&#128204;</button>
+                    </form>
 
-                    {% if subject.completed %}
-                        ✅
-                    {% else %}
-                        ⬜
-                    {% endif %}
+                    <a href="{% url 'topics:toggle_subject' subject.id %}"
+                       class="subject-check">
 
-                </a>
+                        {% if subject.completed %}
+                            ✅
+                        {% else %}
+                            ⬜
+                        {% endif %}
+
+                    </a>
+                </div>
 
             </div>
 

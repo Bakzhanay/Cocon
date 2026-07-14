@@ -221,6 +221,74 @@ class DashboardAndSearchTests(TestCase):
         self.assertEqual(sidebar_topics[0], pinned_topic)
         self.assertIn(first_topic, sidebar_topics)
 
+    def test_pinned_section_moves_to_top_of_topic_and_sidebar(self):
+        pinned_section = Section.objects.create(topic=self.topic, title="Zoology")
+        topic_url = reverse("topics:topic_detail", args=[self.topic.id])
+
+        response = self.client.post(
+            reverse("topics:toggle_section_pin", args=[pinned_section.id]),
+            {"next": topic_url},
+        )
+
+        self.assertRedirects(response, topic_url)
+        pinned_section.refresh_from_db()
+        self.assertTrue(pinned_section.is_pinned)
+
+        topic_page = self.client.get(topic_url)
+        self.assertEqual(list(topic_page.context["sections"])[0], pinned_section)
+        self.assertContains(topic_page, f"Unpin {pinned_section.title}")
+
+        sidebar_topic = next(
+            topic
+            for topic in topic_page.context["sidebar_topics"]
+            if topic.id == self.topic.id
+        )
+        self.assertEqual(list(sidebar_topic.sections.all())[0], pinned_section)
+
+    def test_pinned_subject_moves_to_top_of_section(self):
+        pinned_subject = Subject.objects.create(section=self.section, title="Zoology")
+        section_url = reverse("topics:section_detail", args=[self.section.id])
+
+        response = self.client.post(
+            reverse("topics:toggle_subject_pin", args=[pinned_subject.id]),
+            {"next": section_url},
+        )
+
+        self.assertRedirects(response, section_url)
+        pinned_subject.refresh_from_db()
+        self.assertTrue(pinned_subject.is_pinned)
+
+        section_page = self.client.get(section_url)
+        self.assertEqual(list(section_page.context["subjects"])[0], pinned_subject)
+        self.assertContains(section_page, f"Unpin {pinned_subject.title}")
+
+    def test_section_and_subject_pins_require_post_and_owner(self):
+        user_model = get_user_model()
+        other_user = user_model.objects.create_user(
+            username="other-learner",
+            password="test-pass-456",
+        )
+        other_topic = Topic.objects.create(user=other_user, title="Private")
+        other_section = Section.objects.create(topic=other_topic, title="Private section")
+        other_subject = Subject.objects.create(section=other_section, title="Private subject")
+
+        self.assertEqual(
+            self.client.get(reverse("topics:toggle_section_pin", args=[self.section.id])).status_code,
+            405,
+        )
+        self.assertEqual(
+            self.client.get(reverse("topics:toggle_subject_pin", args=[self.subject.id])).status_code,
+            405,
+        )
+        self.assertEqual(
+            self.client.post(reverse("topics:toggle_section_pin", args=[other_section.id])).status_code,
+            404,
+        )
+        self.assertEqual(
+            self.client.post(reverse("topics:toggle_subject_pin", args=[other_subject.id])).status_code,
+            404,
+        )
+
     def test_dashboard_widget_can_be_pinned_to_the_top_and_unpinned(self):
         toggle_url = reverse(
             "topics:toggle_dashboard_widget",

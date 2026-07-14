@@ -55,6 +55,8 @@ class Section(models.Model):
         help_text="Optional short description shown below the section name.",
     )
 
+    is_pinned = models.BooleanField(default=False)
+
     weekly_goal_minutes = models.PositiveIntegerField(
         default=0,
         help_text="Optional weekly goal. Leave at zero to derive it from subjects.",
@@ -69,7 +71,7 @@ class Section(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        ordering = ["title"]
+        ordering = ["-is_pinned", "title"]
 
     def __str__(self):
         return self.title
@@ -95,6 +97,8 @@ class Subject(models.Model):
         help_text="Optional short description shown below the subject name.",
     )
 
+    is_pinned = models.BooleanField(default=False)
+
     created_at = models.DateTimeField(auto_now_add=True)
 
     # Отмечена ли тема как изученная
@@ -112,7 +116,7 @@ class Subject(models.Model):
     )
 
     class Meta:
-        ordering = ["title"]
+        ordering = ["-is_pinned", "title"]
 
     def __str__(self):
         return self.title

@@ -13,7 +13,7 @@
 
     <link rel="icon" type="image/png" sizes="64x64" href="{% static 'images/cocon-logo.png' %}">
 
-    <link rel="stylesheet" href="{% static 'css/style.css' %}?v=7">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}?v=8">
 
     <link rel="stylesheet" href="{% static 'css/right_panel.css' %}">
 
@@ -27,7 +27,7 @@
 
     <link rel="stylesheet" href="{% static 'css/search.css' %}">
 
-    <link rel="stylesheet" href="{% static 'css/modes.css' %}?v=6">
+    <link rel="stylesheet" href="{% static 'css/modes.css' %}?v=7">
 
     <script>
         if (localStorage.getItem("cocon-theme") === "dark") document.documentElement.classList.add("dark-mode");
@@ -142,8 +142,9 @@
 
             <a
                 href="{% url 'topics:section_detail' section.id %}"
-                class="section-link {% if current_section == section.id %}active-section{% endif %}">
+                class="section-link{% if section.is_pinned %} is-pinned{% endif %}{% if current_section == section.id %} active-section{% endif %}">
 
+                {% if section.is_pinned %}<span class="section-pin-mark" aria-label="Pinned">&#128204;</span>{% endif %}
                 {{ section.title }}
 
             </a>
@@ -163,6 +164,12 @@
         <a href="{% url 'topics:edit_section' section.id %}">
             Rename
         </a>
+
+        <form method="post" action="{% url 'topics:toggle_section_pin' section.id %}" class="menu-action-form">
+            {% csrf_token %}
+            <input type="hidden" name="next" value="{{ request.get_full_path }}">
+            <button type="submit">{% if section.is_pinned %}Unpin{% else %}Pin{% endif %}</button>
+        </form>
 
         <a
             href="{% url 'topics:delete_section' section.id %}"

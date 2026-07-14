@@ -157,6 +157,49 @@ def toggle_topic_pin(request, topic_id):
         return redirect(next_url)
     return redirect("topics:home")
 
+
+@login_required
+@require_POST
+def toggle_section_pin(request, section_id):
+    section = get_object_or_404(
+        Section,
+        id=section_id,
+        topic__user=request.user,
+    )
+    section.is_pinned = not section.is_pinned
+    section.save(update_fields=["is_pinned"])
+
+    next_url = request.POST.get("next", "")
+    if next_url and url_has_allowed_host_and_scheme(
+        next_url,
+        allowed_hosts={request.get_host()},
+        require_https=request.is_secure(),
+    ):
+        return redirect(next_url)
+    return redirect("topics:topic_detail", topic_id=section.topic_id)
+
+
+@login_required
+@require_POST
+def toggle_subject_pin(request, subject_id):
+    subject = get_object_or_404(
+        Subject,
+        id=subject_id,
+        section__topic__user=request.user,
+    )
+    subject.is_pinned = not subject.is_pinned
+    subject.save(update_fields=["is_pinned"])
+
+    next_url = request.POST.get("next", "")
+    if next_url and url_has_allowed_host_and_scheme(
+        next_url,
+        allowed_hosts={request.get_host()},
+        require_https=request.is_secure(),
+    ):
+        return redirect(next_url)
+    return redirect("topics:section_detail", section_id=subject.section_id)
+
+
 @login_required
 def topic_detail(request, topic_id):
 
@@ -171,7 +214,7 @@ def topic_detail(request, topic_id):
     .annotate(
         subject_count=Count("subjects")
     )
-    .order_by("title")
+    .order_by("-is_pinned", "title")
     )
 
     return render(

@@ -60,6 +60,12 @@ urlpatterns = [
     ),
 
     path(
+        "sections/<int:section_id>/pin/",
+        views.toggle_section_pin,
+        name="toggle_section_pin",
+    ),
+
+    path(
         "sections/<int:section_id>/",
         views.section_detail,
         name="section_detail",
@@ -93,6 +99,12 @@ urlpatterns = [
         "subjects/<int:subject_id>/toggle/",
         views.toggle_subject,
         name="toggle_subject",
+    ),
+
+    path(
+        "subjects/<int:subject_id>/pin/",
+        views.toggle_subject_pin,
+        name="toggle_subject_pin",
     ),
 
     path(

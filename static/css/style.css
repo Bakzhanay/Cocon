@@ -1793,6 +1793,61 @@ body{
     font-size:13px;
 }
 
+.entity-pin-form{
+    margin:0;
+}
+
+.entity-pin-button{
+    width:34px;
+    height:34px;
+    display:grid;
+    place-items:center;
+    padding:0;
+    border:1px solid #d8d4cc;
+    border-radius:10px;
+    background:#f5f3ef;
+    color:#8a8780;
+    cursor:pointer;
+    font:inherit;
+    font-size:14px;
+    line-height:1;
+    transition:.18s ease;
+}
+
+.entity-pin-button:hover{
+    border-color:#aebfb9;
+    background:#e9efeb;
+    transform:translateY(-1px);
+}
+
+.entity-pin-button.is-pinned{
+    border-color:#a7bbb4;
+    background:#dfe9e4;
+    color:#496a60;
+}
+
+.entity-pin-button:focus-visible{
+    outline:3px solid rgba(84,117,107,.24);
+    outline-offset:2px;
+}
+
+.subject-top-actions{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    flex-shrink:0;
+}
+
+.section-pin-mark{
+    margin-right:4px;
+    font-size:11px;
+}
+
+.section-link.is-pinned{
+    color:#54756b;
+    font-weight:700;
+}
+
 
 
 .flashcard-image{

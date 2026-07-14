@@ -51,6 +51,16 @@
 
     <div class="section-card-actions">
 
+        <form method="post" action="{% url 'topics:toggle_section_pin' section.id %}" class="entity-pin-form">
+            {% csrf_token %}
+            <input type="hidden" name="next" value="{{ request.get_full_path }}">
+            <button type="submit"
+                    class="entity-pin-button{% if section.is_pinned %} is-pinned{% endif %}"
+                    aria-label="{% if section.is_pinned %}Unpin {{ section.title }}{% else %}Pin {{ section.title }}{% endif %}"
+                    aria-pressed="{% if section.is_pinned %}true{% else %}false{% endif %}"
+                    title="{% if section.is_pinned %}Unpin{% else %}Pin{% endif %}">&#128204;</button>
+        </form>
+
         <a href="{% url 'topics:edit_section' section.id %}"
            class="btn-secondary-small">
 
