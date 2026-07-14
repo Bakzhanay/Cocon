@@ -223,7 +223,7 @@ def build_focus_analytics(
                     "object": subject,
                     "subject": subject,
                     "title": subject.title,
-                    "url": reverse("topics:subject_detail", args=[subject.id]),
+                    "url": reverse("topics:subject_overview", args=[subject.id]),
                     "kind": "Subject",
                     "priority": subject.priority,
                     "seconds": period["totals"]["subject"].get(subject.id, 0),

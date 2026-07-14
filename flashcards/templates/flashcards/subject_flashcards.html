@@ -11,6 +11,8 @@
             <p>Review what you know and let Cocon schedule what comes next.</p>
         </div>
         <div class="flashcard-toolbar">
+            <a href="{% url 'topics:subject_overview' subject.id %}" class="toolbar-btn">Overview</a>
+            <a href="{% url 'topics:subject_detail' subject.id %}" class="toolbar-btn">Notes</a>
             <a href="{% url 'flashcards:shuffle_subject_flashcards' subject.id %}" class="toolbar-btn">Shuffle</a>
             <a href="{% url 'flashcards:restore_subject_flashcards' subject.id %}" class="toolbar-btn">Original order</a>
             <a href="{% url 'flashcards:add_subject_flashcard' subject.id %}" class="toolbar-btn primary">+ Add flashcard</a>

@@ -23,6 +23,35 @@ class DashboardAndSearchTests(TestCase):
         self.card = Flashcard.objects.create(subject=self.subject, question="What is mitosis?", answer="Cell division")
         self.client.force_login(self.user)
 
+    def create_completed_focus(
+        self,
+        duration_seconds,
+        *,
+        topic=None,
+        section=None,
+        subject=None,
+        activity_type="general",
+    ):
+        if subject:
+            section = subject.section
+            topic = section.topic
+        elif section:
+            topic = section.topic
+        ended_at = timezone.now()
+        return StudySession.objects.create(
+            user=self.user,
+            topic=topic,
+            section=section,
+            subject=subject,
+            activity_type=activity_type,
+            started_at=ended_at - timedelta(seconds=duration_seconds),
+            ended_at=ended_at,
+            duration_seconds=duration_seconds,
+            planned_duration_seconds=duration_seconds,
+            completed=True,
+            status="completed",
+        )
+
     def test_dashboard_counts_subject_flashcards_and_focus_minutes(self):
         now = timezone.now()
         StudySession.objects.create(
@@ -46,10 +75,10 @@ class DashboardAndSearchTests(TestCase):
         self.assertEqual(response.context["due_flashcards"], 1)
         self.assertContains(response, "Cells")
         self.assertContains(response, "Biology 25m")
-        self.assertContains(response, "Continue notes")
+        self.assertContains(response, "Open subject")
         self.assertContains(
             response,
-            reverse("topics:subject_detail", args=[self.subject.id]) + "?focus=resume",
+            reverse("topics:subject_overview", args=[self.subject.id]) + "?focus=resume",
             count=2,
         )
         self.assertContains(response, reverse("flashcards:due_flashcards"))
@@ -222,6 +251,74 @@ class DashboardAndSearchTests(TestCase):
         self.assertContains(response, 'data-subject-pinned="false"')
         self.assertContains(response, 'data-subject-title="cells"')
         self.assertContains(response, "js/subject_filters.js?v=2")
+
+    def test_focus_statistics_roll_up_from_subject_to_section_and_topic(self):
+        self.create_completed_focus(
+            1500,
+            subject=self.subject,
+            activity_type="notes",
+        )
+        self.create_completed_focus(
+            600,
+            subject=self.subject,
+            activity_type="flashcards",
+        )
+        self.create_completed_focus(300, section=self.section)
+        self.create_completed_focus(120, topic=self.topic)
+
+        topic_page = self.client.get(
+            reverse("topics:topic_detail", args=[self.topic.id])
+        )
+        section_card = topic_page.context["sections"][0]
+        self.assertEqual(topic_page.context["topic"].focus_duration, "42 min")
+        self.assertEqual(section_card.focus_duration, "40 min")
+        self.assertContains(topic_page, "Show statistics")
+        self.assertContains(topic_page, "js/focus_stats.js?v=1")
+
+        section_page = self.client.get(
+            reverse("topics:section_detail", args=[self.section.id])
+        )
+        subject_card = section_page.context["subjects"][0]
+        self.assertEqual(section_page.context["section"].focus_duration, "40 min")
+        self.assertEqual(subject_card.focus_duration, "35 min")
+        self.assertEqual(subject_card.notes_focus_duration, "25 min")
+        self.assertEqual(subject_card.flashcards_focus_duration, "10 min")
+        self.assertContains(section_page, "Show statistics")
+        self.assertContains(
+            section_page,
+            reverse("topics:subject_overview", args=[self.subject.id]),
+        )
+
+    def test_subject_overview_tracks_general_subject_study_separately(self):
+        self.create_completed_focus(900, subject=self.subject)
+        self.create_completed_focus(
+            600,
+            subject=self.subject,
+            activity_type="notes",
+        )
+        self.create_completed_focus(
+            300,
+            subject=self.subject,
+            activity_type="flashcards",
+        )
+
+        response = self.client.get(
+            reverse("topics:subject_overview", args=[self.subject.id])
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["current_activity_type"], "general")
+        self.assertEqual(response.context["subject"].focus_duration, "30 min")
+        self.assertEqual(response.context["subject"].subject_study_duration, "15 min")
+        self.assertEqual(response.context["subject"].notes_focus_duration, "10 min")
+        self.assertEqual(response.context["subject"].flashcards_focus_duration, "5 min")
+        self.assertContains(response, "Start focus on Cells")
+        self.assertContains(response, reverse("topics:subject_detail", args=[self.subject.id]))
+        self.assertContains(
+            response,
+            reverse("flashcards:subject_flashcards", args=[self.subject.id]),
+        )
+        self.assertContains(response, "Tracking Science / Biology / Cells")
 
     def test_subjects_keep_the_order_they_were_created(self):
         second_subject = Subject.objects.create(section=self.section, title="Zoology")

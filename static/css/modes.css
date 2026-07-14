@@ -805,3 +805,71 @@ html.low-stimulus .dashboard-hero {
         z-index: 300;
     }
 }
+
+html.dark-mode .focus-stats-toggle{
+    border-color:#465049;
+    background:#242b27;
+    color:#a9c8be;
+}
+
+html.dark-mode .focus-stats-toggle:hover,
+html.dark-mode .focus-stats-toggle[aria-pressed="true"]{
+    border-color:#668177;
+    background:#30483f;
+    color:#e6f0ec;
+}
+
+html.dark-mode .page-focus-stat,
+html.dark-mode .card-focus-stat,
+html.dark-mode .subject-focus-summary{
+    border-color:#435049;
+    background:#27332d;
+    color:var(--dark-muted);
+}
+
+html.dark-mode .page-focus-stat strong,
+html.dark-mode .card-focus-stat strong,
+html.dark-mode .subject-focus-summary strong,
+html.dark-mode .subject-action-duration{
+    color:#afd0c6;
+}
+
+html.dark-mode .subject-overview-total{
+    border-color:#44564e;
+    background:linear-gradient(135deg,#263a33,#202722);
+}
+
+html.dark-mode .subject-overview-total span,
+html.dark-mode .subject-overview-total p,
+html.dark-mode .subject-workspace-card div > span,
+html.dark-mode .subject-workspace-card p,
+html.dark-mode .subject-overview-hint p{
+    color:var(--dark-muted);
+}
+
+html.dark-mode .subject-overview-total strong,
+html.dark-mode .subject-workspace-card strong,
+html.dark-mode .subject-overview-hint strong{
+    color:var(--dark-heading);
+}
+
+html.dark-mode .subject-workspace-card{
+    border-color:var(--border);
+    background:var(--dark-surface);
+    color:var(--text);
+}
+
+html.dark-mode a.subject-workspace-card:hover{
+    border-color:#668177;
+    box-shadow:none;
+}
+
+html.dark-mode .subject-workspace-icon{
+    background:#30443c;
+    color:#b8d5cc;
+}
+
+html.dark-mode .subject-overview-hint{
+    border-color:#465049;
+    color:var(--dark-muted);
+}

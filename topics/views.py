@@ -1,7 +1,7 @@
 from django.utils import timezone
 from django.db.models import Sum
 from study.models import StudySession
-from study.analytics import build_focus_analytics
+from study.analytics import aggregate_sessions, build_focus_analytics, format_duration
 from datetime import datetime, time, timedelta
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
@@ -41,11 +41,12 @@ def _study_session_resume_url(session):
         return None
 
     if session.subject:
-        route_name = (
-            "flashcards:subject_flashcards"
-            if session.activity_type == "flashcards"
-            else "topics:subject_detail"
-        )
+        if session.activity_type == "flashcards":
+            route_name = "flashcards:subject_flashcards"
+        elif session.activity_type == "notes":
+            route_name = "topics:subject_detail"
+        else:
+            route_name = "topics:subject_overview"
         path = reverse(route_name, args=[session.subject_id])
     elif session.section:
         path = reverse("topics:section_detail", args=[session.section_id])
@@ -55,6 +56,44 @@ def _study_session_resume_url(session):
         return None
 
     return f"{path}?focus=resume"
+
+
+def _focus_snapshot(user):
+    """Return all completed Pomodoro time grouped by learning context."""
+    sessions = StudySession.objects.filter(
+        user=user,
+        completed=True,
+        status="completed",
+    )
+    return aggregate_sessions(sessions)
+
+
+def _add_focus_to_sections(sections, snapshot):
+    for section in sections:
+        seconds = snapshot["totals"]["section"].get(section.id, 0)
+        section.focus_seconds = seconds
+        section.focus_duration = format_duration(seconds)
+
+
+def _add_focus_to_subjects(subjects, snapshot):
+    activity_totals = snapshot["activities"]["subject"]
+    for subject in subjects:
+        total_seconds = snapshot["totals"]["subject"].get(subject.id, 0)
+        notes_seconds = activity_totals.get((subject.id, "notes"), 0)
+        flashcards_seconds = activity_totals.get((subject.id, "flashcards"), 0)
+        subject_study_seconds = max(
+            0,
+            total_seconds - notes_seconds - flashcards_seconds,
+        )
+
+        subject.focus_seconds = total_seconds
+        subject.focus_duration = format_duration(total_seconds)
+        subject.notes_focus_seconds = notes_seconds
+        subject.notes_focus_duration = format_duration(notes_seconds)
+        subject.flashcards_focus_seconds = flashcards_seconds
+        subject.flashcards_focus_duration = format_duration(flashcards_seconds)
+        subject.subject_study_seconds = subject_study_seconds
+        subject.subject_study_duration = format_duration(subject_study_seconds)
 
 # Create your views here.
 @login_required
@@ -209,13 +248,15 @@ def topic_detail(request, topic_id):
         user=request.user,
     )
 
-    sections = (
-    topic.sections
-    .annotate(
-        subject_count=Count("subjects")
+    sections = list(
+        topic.sections
+        .annotate(subject_count=Count("subjects"))
+        .order_by("-is_pinned", "title")
     )
-    .order_by("-is_pinned", "title")
-    )
+    focus_snapshot = _focus_snapshot(request.user)
+    _add_focus_to_sections(sections, focus_snapshot)
+    topic.focus_seconds = focus_snapshot["totals"]["topic"].get(topic.id, 0)
+    topic.focus_duration = format_duration(topic.focus_seconds)
 
     return render(
         request,
@@ -338,9 +379,13 @@ def section_detail(request, section_id):
         topic__user=request.user,
     )
 
-    subjects = section.subjects.all()
-    total_subjects = subjects.count()
-    completed_subjects = subjects.filter(completed=True).count()
+    subjects = list(section.subjects.all())
+    total_subjects = len(subjects)
+    completed_subjects = sum(subject.completed for subject in subjects)
+    focus_snapshot = _focus_snapshot(request.user)
+    _add_focus_to_subjects(subjects, focus_snapshot)
+    section.focus_seconds = focus_snapshot["totals"]["section"].get(section.id, 0)
+    section.focus_duration = format_duration(section.focus_seconds)
 
     return render(
         request,
@@ -414,6 +459,31 @@ def subject_detail(request, subject_id):
             "current_section": subject.section.id,
             "current_subject": subject.id,
             "current_activity_type": "notes",
+        },
+    )
+
+
+@login_required
+def subject_overview(request, subject_id):
+    subject = get_object_or_404(
+        Subject,
+        id=subject_id,
+        section__topic__user=request.user,
+    )
+    focus_snapshot = _focus_snapshot(request.user)
+    _add_focus_to_subjects([subject], focus_snapshot)
+
+    return render(
+        request,
+        "topics/subject_overview.html",
+        {
+            "subject": subject,
+            "note_count": subject.notes.count(),
+            "flashcard_count": subject.flashcards.count(),
+            "current_topic": subject.section.topic_id,
+            "current_section": subject.section_id,
+            "current_subject": subject.id,
+            "current_activity_type": "general",
         },
     )
 

@@ -24,9 +24,13 @@
     <h2 class="notes-section-title">
         Notes <span class="notes-count">{{ notes.count }}</span>
     </h2>
+    <div class="subject-workspace-nav">
+    <a href="{% url 'topics:subject_overview' subject.id %}" class="toolbar-btn">Overview</a>
+    <a href="{% url 'flashcards:subject_flashcards' subject.id %}" class="toolbar-btn">Flashcards</a>
     <a href="{% url 'notes:add_subject_note' subject.id %}" class="toolbar-btn primary">
         ＋ Add Note
     </a>
+    </div>
 </div>
 
 {% if notes %}

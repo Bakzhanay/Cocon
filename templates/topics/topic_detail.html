@@ -1,12 +1,24 @@
 {% extends "base.html" %}
+{% load static %}
 
 {% block content %}
 
-<div class="topic-page">
+<div class="topic-page" data-focus-stats-scope data-focus-stats-key="topic-{{ topic.id }}">
 
     <div class="topic-page-header">
 
-        <h1>{{ topic.title }}</h1>
+        <div>
+            <h1>{{ topic.title }}</h1>
+            <div class="page-focus-stat" data-focus-stat hidden>
+                <span>Total focused time</span>
+                <strong>{{ topic.focus_duration }}</strong>
+            </div>
+        </div>
+
+        <div class="page-actions focus-page-actions">
+        <button class="focus-stats-toggle" type="button" data-focus-stats-toggle aria-pressed="false">
+            Show statistics
+        </button>
 
         <a
             href="{% url 'topics:add_section' topic.id %}"
@@ -15,6 +27,7 @@
             ＋ Add Section
 
         </a>
+        </div>
 
     </div>
 
@@ -40,8 +53,13 @@
                 {% endif %}
 
                 <span class="subject-count">
-                    {{ section.subjects.count }} Subject{{ section.subjects.count|pluralize }}
+                    {{ section.subject_count }} Subject{{ section.subject_count|pluralize }}
                 </span>
+
+                <div class="card-focus-stat" data-focus-stat hidden>
+                    <span>Focused time</span>
+                    <strong>{{ section.focus_duration }}</strong>
+                </div>
 
             </div>
 
@@ -97,4 +115,8 @@
 
 </div>
 
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{% static 'js/focus_stats.js' %}?v=1"></script>
 {% endblock %}

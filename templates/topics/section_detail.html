@@ -3,7 +3,7 @@
 
 {% block content %}
 
-<div class="page-content">
+<div class="page-content" data-focus-stats-scope data-focus-stats-key="section-{{ section.id }}">
 
     <div class="page-header">
 
@@ -28,14 +28,25 @@
             </div>
             {% endif %}
 
+            <div class="page-focus-stat" data-focus-stat hidden>
+                <span>Total focused time</span>
+                <strong>{{ section.focus_duration }}</strong>
+            </div>
+
         </div>
 
-        <a href="{% url 'topics:add_subject' section.id %}"
-           class="primary-btn">
+        <div class="page-actions focus-page-actions">
+            <button class="focus-stats-toggle" type="button" data-focus-stats-toggle aria-pressed="false">
+                Show statistics
+            </button>
 
-            + Add Subject
+            <a href="{% url 'topics:add_subject' section.id %}"
+               class="primary-btn">
 
-        </a>
+                + Add Subject
+
+            </a>
+        </div>
 
     </div>
 
@@ -95,7 +106,7 @@
 
                 <div class="subject-title">
 
-                    <a>
+                    <a href="{% url 'topics:subject_overview' subject.id %}">
 
                         {{ subject.title }}
 
@@ -132,20 +143,30 @@
 
             </div>
 
+            <div class="subject-focus-summary" data-focus-stat hidden>
+                <span>Total focus</span>
+                <strong>{{ subject.focus_duration }}</strong>
+            </div>
 
             <div class="subject-actions">
 
+                <div class="subject-action-row">
                 <a href="{% url 'flashcards:subject_flashcards' subject.id %}">
 
                     🃏 Flashcards
 
                 </a>
+                <span class="subject-action-duration" data-focus-stat hidden>{{ subject.flashcards_focus_duration }}</span>
+                </div>
 
+                <div class="subject-action-row">
                 <a href="{% url 'topics:subject_detail' subject.id %}">
 
                     📝 Notes
 
                 </a>
+                <span class="subject-action-duration" data-focus-stat hidden>{{ subject.notes_focus_duration }}</span>
+                </div>
 
             </div>
 
@@ -186,4 +207,5 @@
 
 {% block extra_scripts %}
 <script src="{% static 'js/subject_filters.js' %}?v=2"></script>
+<script src="{% static 'js/focus_stats.js' %}?v=1"></script>
 {% endblock %}

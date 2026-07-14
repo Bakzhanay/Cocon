@@ -78,6 +78,12 @@ urlpatterns = [
     ),
 
     path(
+        "subjects/<int:subject_id>/overview/",
+        views.subject_overview,
+        name="subject_overview",
+    ),
+
+    path(
         "subjects/<int:subject_id>/",
         views.subject_detail,
         name="subject_detail",

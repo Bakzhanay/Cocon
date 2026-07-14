@@ -104,8 +104,10 @@
                     {% if recent_session.subject %}
                     {% if recent_session.activity_type == "flashcards" %}
                     <a class="dashboard-action" href="{{ recent_session_resume_url }}">Review flashcards</a>
-                    {% else %}
+                    {% elif recent_session.activity_type == "notes" %}
                     <a class="dashboard-action" href="{{ recent_session_resume_url }}">Continue notes</a>
+                    {% else %}
+                    <a class="dashboard-action" href="{{ recent_session_resume_url }}">Open subject</a>
                     {% endif %}
                     {% elif recent_session.section %}
                     <a class="dashboard-action" href="{{ recent_session_resume_url }}">Open section</a>

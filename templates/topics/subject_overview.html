@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="topic-page subject-overview-page">
+    <a href="{% url 'topics:section_detail' subject.section.id %}" class="back-link">
+        &larr; Back to {{ subject.section.title }}
+    </a>
+
+    <div class="topic-page-header subject-overview-header">
+        <div>
+            <span class="subject-overview-eyebrow">Subject workspace</span>
+            <h1>{{ subject.title }}</h1>
+            {% if subject.description %}
+            <p class="entity-page-description">{{ subject.description }}</p>
+            {% endif %}
+            <p class="page-subtitle">
+                {{ subject.section.topic.title }} / {{ subject.section.title }}
+            </p>
+        </div>
+
+        <button class="primary-btn" type="button" data-open-focus-panel>
+            Start focus on {{ subject.title }}
+        </button>
+    </div>
+
+    <section class="subject-overview-total">
+        <div>
+            <span>Total focused time</span>
+            <strong>{{ subject.focus_duration }}</strong>
+        </div>
+        <p>Only completed Pomodoro sessions are counted.</p>
+    </section>
+
+    <div class="subject-workspace-grid">
+        <div class="subject-workspace-card subject-workspace-general">
+            <span class="subject-workspace-icon" aria-hidden="true">&#9678;</span>
+            <div>
+                <span>Subject study</span>
+                <strong>{{ subject.subject_study_duration }}</strong>
+                <p>Time focused from this overview.</p>
+            </div>
+        </div>
+
+        <a class="subject-workspace-card" href="{% url 'topics:subject_detail' subject.id %}">
+            <span class="subject-workspace-icon" aria-hidden="true">N</span>
+            <div>
+                <span>Notes</span>
+                <strong>{{ subject.notes_focus_duration }}</strong>
+                <p>{{ note_count }} note{{ note_count|pluralize }} &middot; Open notes &rarr;</p>
+            </div>
+        </a>
+
+        <a class="subject-workspace-card" href="{% url 'flashcards:subject_flashcards' subject.id %}">
+            <span class="subject-workspace-icon" aria-hidden="true">F</span>
+            <div>
+                <span>Flashcards</span>
+                <strong>{{ subject.flashcards_focus_duration }}</strong>
+                <p>{{ flashcard_count }} card{{ flashcard_count|pluralize }} &middot; Study cards &rarr;</p>
+            </div>
+        </a>
+    </div>
+
+    <div class="subject-overview-hint">
+        <strong>How tracking works</strong>
+        <p>Start the timer here for general {{ subject.title }} study, or open Notes or Flashcards to record that activity separately.</p>
+    </div>
+</div>
+
+{% endblock %}
