@@ -696,6 +696,7 @@
     function setPanelCollapsed(collapsed) {
         panel.classList.toggle("is-collapsed", collapsed);
         appLayout.classList.toggle("right-sidebar-is-collapsed", collapsed);
+        document.documentElement.classList.toggle("focus-panel-is-open", !collapsed);
         panelToggle.setAttribute("aria-expanded", String(!collapsed));
         panelToggle.setAttribute("aria-label", collapsed ? "Show focus panel" : "Hide focus panel");
         panelToggle.title = collapsed ? "Show focus panel" : "Hide focus panel";
@@ -708,6 +709,10 @@
 
     panelToggle.addEventListener("click", () => {
         setPanelCollapsed(!panel.classList.contains("is-collapsed"));
+    });
+
+    window.addEventListener("cocon:low-stimulus-change", (event) => {
+        if (event.detail?.active) setPanelCollapsed(true);
     });
 
     document.querySelectorAll("[data-open-focus-panel]").forEach((trigger) => {

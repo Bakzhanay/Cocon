@@ -46,6 +46,11 @@ class DashboardAndSearchTests(TestCase):
         self.assertEqual(response.context["due_flashcards"], 1)
         self.assertContains(response, "Cells")
         self.assertContains(response, "Biology 25m")
+        self.assertContains(response, "Continue notes")
+        self.assertContains(
+            response,
+            reverse("topics:subject_detail", args=[self.subject.id]),
+        )
         self.assertContains(response, reverse("flashcards:due_flashcards"))
 
     def test_dashboard_general_session_can_open_focus_timer(self):

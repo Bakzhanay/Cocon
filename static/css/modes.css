@@ -584,6 +584,46 @@ html.low-stimulus .right-sidebar {
     display: none;
 }
 
+html.low-stimulus.focus-panel-is-open .right-sidebar {
+    position: fixed;
+    top: 74px;
+    right: 28px;
+    z-index: 400;
+    width: min(360px, calc(100vw - 32px));
+    height: auto;
+    max-height: calc(100vh - 102px);
+    display: block;
+    overflow: hidden;
+    transform: none;
+    border: 1px solid var(--border);
+    border-radius: 22px;
+    box-shadow: 0 20px 55px rgba(45, 53, 49, .16);
+}
+
+html.low-stimulus.focus-panel-is-open .right-sidebar-header {
+    height: 72px;
+    padding: 15px 16px 14px 20px;
+}
+
+html.low-stimulus.focus-panel-is-open .right-sidebar-content {
+    height: auto;
+    max-height: calc(100vh - 174px);
+    padding: 14px;
+    overflow-y: auto;
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+}
+
+html.low-stimulus.focus-panel-is-open .sound-card,
+html.low-stimulus.focus-panel-is-open .calendar-card {
+    display: none;
+}
+
+html.low-stimulus.focus-panel-is-open .timer-card {
+    margin-bottom: 0;
+}
+
 html.low-stimulus .topbar {
     min-height: 58px;
     justify-content: flex-end;
@@ -633,6 +673,16 @@ html.low-stimulus .dashboard-hero {
 }
 
 @media (max-width: 620px) {
+    html.low-stimulus.focus-panel-is-open .right-sidebar {
+        top: 66px;
+        right: 16px;
+        max-height: calc(100vh - 82px);
+    }
+
+    html.low-stimulus.focus-panel-is-open .right-sidebar-content {
+        max-height: calc(100vh - 154px);
+    }
+
     .mode-controls {
         position: fixed;
         top: 12px;

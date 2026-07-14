@@ -24,6 +24,9 @@
     stimulusButton.addEventListener("click", () => {
         const active = root.classList.toggle("low-stimulus");
         localStorage.setItem("cocon-low-stimulus", String(active));
+        window.dispatchEvent(new CustomEvent("cocon:low-stimulus-change", {
+            detail: { active },
+        }));
         render();
     });
 
