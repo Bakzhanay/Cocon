@@ -33,6 +33,13 @@
             </div>
 
             <div class="form-group">
+                <label for="{{ form.description.id_for_label }}">Short description</label>
+                {{ form.description }}
+                <small class="form-hint">Optional. A short explanation shown below the subject name.</small>
+                {{ form.description.errors }}
+            </div>
+
+            <div class="form-group">
                 <label for="{{ form.weekly_goal_minutes.id_for_label }}">Weekly goal (minutes)</label>
                 {{ form.weekly_goal_minutes }}
                 <small class="form-hint">Used by the dashboard to show what needs attention.</small>

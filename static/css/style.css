@@ -234,10 +234,20 @@ body{
 
     justify-content:space-between;
 
-    align-items:center;
+    align-items:flex-start;
+
+    gap:28px;
 
     margin-bottom:35px;
 
+}
+
+.page-header > div{
+    min-width:0;
+}
+
+.page-header > .primary-btn{
+    flex-shrink:0;
 }
 
 
@@ -1719,6 +1729,68 @@ body{
 .page-subtitle{
     margin-top:8px;
     color:#7b7b7b;
+}
+
+.form-group textarea.form-control{
+    width:100%;
+    min-height:78px;
+    padding:14px 16px;
+    box-sizing:border-box;
+    border:1px solid #d8d8d8;
+    border-radius:12px;
+    background:#fff;
+    color:#444;
+    font:inherit;
+    font-size:15px;
+    line-height:1.5;
+    resize:vertical;
+}
+
+.form-group textarea.form-control:focus{
+    outline:none;
+    border-color:#7f9f96;
+    box-shadow:0 0 0 3px rgba(127,159,150,.14);
+}
+
+.entity-card-description{
+    display:-webkit-box;
+    overflow:hidden;
+    -webkit-box-orient:vertical;
+    -webkit-line-clamp:2;
+    max-width:620px;
+    margin:7px 0 0;
+    color:#7b817d;
+    font-size:13px;
+    font-weight:400;
+    line-height:1.45;
+    overflow-wrap:anywhere;
+}
+
+.section-card .entity-card-description{
+    margin:7px 0 0;
+    line-height:1.45;
+    white-space:normal;
+}
+
+.entity-page-description{
+    max-width:720px;
+    margin:8px 0 0;
+    color:#596a64;
+    font-size:15px;
+    line-height:1.55;
+    overflow-wrap:anywhere;
+}
+
+.subject-top{
+    align-items:flex-start;
+}
+
+.subject-title{
+    min-width:0;
+}
+
+.subject-title .entity-card-description{
+    font-size:13px;
 }
 
 

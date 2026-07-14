@@ -49,6 +49,12 @@ class Section(models.Model):
 
     title = models.CharField(max_length=100)
 
+    description = models.CharField(
+        max_length=240,
+        blank=True,
+        help_text="Optional short description shown below the section name.",
+    )
+
     weekly_goal_minutes = models.PositiveIntegerField(
         default=0,
         help_text="Optional weekly goal. Leave at zero to derive it from subjects.",
@@ -82,6 +88,12 @@ class Subject(models.Model):
     )
 
     title = models.CharField(max_length=100)
+
+    description = models.CharField(
+        max_length=240,
+        blank=True,
+        help_text="Optional short description shown below the subject name.",
+    )
 
     created_at = models.DateTimeField(auto_now_add=True)
 

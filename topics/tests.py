@@ -17,9 +17,9 @@ class DashboardAndSearchTests(TestCase):
     def setUp(self):
         user_model = get_user_model()
         self.user = user_model.objects.create_user(username="learner", password="test-pass-123")
-        topic = Topic.objects.create(user=self.user, title="Science")
-        section = Section.objects.create(topic=topic, title="Biology")
-        self.subject = Subject.objects.create(section=section, title="Cells")
+        self.topic = Topic.objects.create(user=self.user, title="Science")
+        self.section = Section.objects.create(topic=self.topic, title="Biology")
+        self.subject = Subject.objects.create(section=self.section, title="Cells")
         self.card = Flashcard.objects.create(subject=self.subject, question="What is mitosis?", answer="Cell division")
         self.client.force_login(self.user)
 
@@ -107,6 +107,92 @@ class DashboardAndSearchTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "What is mitosis?")
         self.assertContains(response, reverse("flashcards:subject_flashcards", args=[self.subject.id]))
+
+    def test_section_and_subject_descriptions_are_created_and_displayed(self):
+        section_description = "Living systems and their organization"
+        subject_description = "The cell as the basis of life"
+
+        section_response = self.client.post(
+            reverse("topics:add_section", args=[self.topic.id]),
+            {
+                "title": "Foundations",
+                "description": section_description,
+                "weekly_goal_minutes": 0,
+                "priority": "normal",
+            },
+        )
+        section = Section.objects.get(topic=self.topic, title="Foundations")
+        self.assertRedirects(
+            section_response,
+            reverse("topics:topic_detail", args=[self.topic.id]),
+        )
+
+        subject_response = self.client.post(
+            reverse("topics:add_subject", args=[section.id]),
+            {
+                "title": "Cell",
+                "description": subject_description,
+                "weekly_goal_minutes": 120,
+                "priority": "normal",
+            },
+        )
+        subject = Subject.objects.get(section=section, title="Cell")
+        self.assertRedirects(
+            subject_response,
+            reverse("topics:section_detail", args=[section.id]),
+        )
+
+        self.assertContains(
+            self.client.get(reverse("topics:topic_detail", args=[self.topic.id])),
+            section_description,
+        )
+        section_page = self.client.get(reverse("topics:section_detail", args=[section.id]))
+        self.assertContains(section_page, section_description)
+        self.assertContains(section_page, subject_description)
+        self.assertContains(
+            self.client.get(reverse("topics:subject_detail", args=[subject.id])),
+            subject_description,
+        )
+
+    def test_section_and_subject_descriptions_can_be_edited(self):
+        section_description = "Core biological principles"
+        subject_description = "Structure and function of cells"
+
+        self.client.post(
+            reverse("topics:edit_section", args=[self.section.id]),
+            {
+                "title": self.section.title,
+                "description": section_description,
+                "weekly_goal_minutes": 0,
+                "priority": "normal",
+            },
+        )
+        self.client.post(
+            reverse("topics:edit_subject", args=[self.subject.id]),
+            {
+                "title": self.subject.title,
+                "description": subject_description,
+                "weekly_goal_minutes": 120,
+                "priority": "normal",
+            },
+        )
+
+        self.section.refresh_from_db()
+        self.subject.refresh_from_db()
+        self.assertEqual(self.section.description, section_description)
+        self.assertEqual(self.subject.description, subject_description)
+
+    def test_search_finds_section_and_subject_descriptions(self):
+        self.section.description = "Molecular foundations"
+        self.section.save(update_fields=["description"])
+        self.subject.description = "The cell as the basis of life"
+        self.subject.save(update_fields=["description"])
+
+        section_results = self.client.get(reverse("topics:search"), {"q": "molecular"})
+        subject_results = self.client.get(reverse("topics:search"), {"q": "basis of life"})
+
+        self.assertContains(section_results, self.section.title)
+        self.assertContains(subject_results, self.subject.title)
 
     def test_section_mastered_summary_updates_with_subject_checkbox(self):
         section_url = reverse("topics:section_detail", args=[self.subject.section_id])

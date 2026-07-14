@@ -10,6 +10,10 @@
 
             <h1>{{ section.title }}</h1>
 
+            {% if section.description %}
+            <p class="entity-page-description">{{ section.description }}</p>
+            {% endif %}
+
             <p class="page-subtitle">
 
                 {{ section.topic.title }}
@@ -50,6 +54,10 @@
                         {{ subject.title }}
 
                     </a>
+
+                    {% if subject.description %}
+                    <p class="entity-card-description">{{ subject.description }}</p>
+                    {% endif %}
 
                 </div>
 

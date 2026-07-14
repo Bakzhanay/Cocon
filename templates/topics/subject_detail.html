@@ -11,6 +11,9 @@
 <div class="topic-page-header">
     <div>
         <h1>{{ subject.title }}</h1>
+        {% if subject.description %}
+        <p class="entity-page-description">{{ subject.description }}</p>
+        {% endif %}
         <p class="page-subtitle">
             {{ subject.section.topic.title }} / {{ subject.section.title }}
         </p>

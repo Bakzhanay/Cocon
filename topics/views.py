@@ -482,12 +482,16 @@ def search(request):
 
     sections = Section.objects.filter(
         topic__user=request.user,
-        title__icontains=query,
+    ).filter(
+        Q(title__icontains=query) |
+        Q(description__icontains=query)
     )
 
     subjects = Subject.objects.filter(
         section__topic__user=request.user,
-        title__icontains=query,
+    ).filter(
+        Q(title__icontains=query) |
+        Q(description__icontains=query)
     )
 
     flashcards = Flashcard.objects.filter(

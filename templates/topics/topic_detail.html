@@ -35,6 +35,10 @@
 
                 <h3>{{ section.title }}</h3>
 
+                {% if section.description %}
+                <p class="entity-card-description">{{ section.description }}</p>
+                {% endif %}
+
                 <span class="subject-count">
                     {{ section.subjects.count }} Subject{{ section.subjects.count|pluralize }}
                 </span>
