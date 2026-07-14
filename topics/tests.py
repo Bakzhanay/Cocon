@@ -203,6 +203,23 @@ class DashboardAndSearchTests(TestCase):
         self.subject.refresh_from_db()
         self.assertEqual(self.subject.color, "default")
 
+    def test_section_page_exposes_subject_status_and_color_filters(self):
+        self.subject.color = "sky"
+        self.subject.completed = True
+        self.subject.save(update_fields=["color", "completed"])
+
+        response = self.client.get(
+            reverse("topics:section_detail", args=[self.section.id])
+        )
+
+        self.assertEqual(response.context["subject_color_choices"], Subject.COLOR_CHOICES)
+        self.assertContains(response, 'id="subjectStatusFilter"')
+        self.assertContains(response, 'id="subjectColorFilter"')
+        self.assertContains(response, '<option value="sky">Sky blue</option>', html=True)
+        self.assertContains(response, 'data-subject-status="mastered"')
+        self.assertContains(response, 'data-subject-color="sky"')
+        self.assertContains(response, "js/subject_filters.js?v=1")
+
     def test_search_finds_section_and_subject_descriptions(self):
         self.section.description = "Molecular foundations"
         self.section.save(update_fields=["description"])

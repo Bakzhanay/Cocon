@@ -351,6 +351,7 @@ def section_detail(request, section_id):
             "total_subjects": total_subjects,
             "completed_subjects": completed_subjects,
             "subjects_progress": round((completed_subjects / total_subjects) * 100) if total_subjects else 0,
+            "subject_color_choices": Subject.COLOR_CHOICES,
             "notes": section.notes.all().order_by("-updated_at"),
             "current_topic": section.topic.id,
             "current_section": section.id,

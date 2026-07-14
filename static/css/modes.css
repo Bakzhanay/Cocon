@@ -555,6 +555,31 @@ html.dark-mode .card-color-option:hover {
     background:#2d3631;
 }
 
+html.dark-mode .subject-filter-bar,
+html.dark-mode .subject-filter-empty {
+    border-color:#414a44;
+    background:#202622;
+}
+
+html.dark-mode .subject-filter-field,
+html.dark-mode .subject-filter-count,
+html.dark-mode .subject-filter-empty {
+    color:var(--dark-muted);
+}
+
+html.dark-mode .subject-filter-field select,
+html.dark-mode .subject-filter-reset {
+    border-color:#465049;
+    background:#171c19;
+    color:#dce4df;
+}
+
+html.dark-mode .subject-filter-reset:hover {
+    border-color:#59736a;
+    background:#2d3631;
+    color:#fff;
+}
+
 html.dark-mode .inline-note-action .note-pin-button,
 html.dark-mode .quick-note-actions button {
     border-color: #465049;

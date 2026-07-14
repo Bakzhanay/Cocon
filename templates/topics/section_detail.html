@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load static %}
 
 {% block content %}
 
@@ -38,12 +39,46 @@
 
     </div>
 
+    {% if subjects %}
+    <div class="subject-filter-bar" id="subjectFilters" data-section-id="{{ section.id }}">
+        <div class="subject-filter-controls">
+            <label class="subject-filter-field" for="subjectStatusFilter">
+                <span>Show</span>
+                <select id="subjectStatusFilter">
+                    <option value="all">All cards</option>
+                    <option value="active">Active</option>
+                    <option value="mastered">Mastered</option>
+                </select>
+            </label>
+
+            <label class="subject-filter-field" for="subjectColorFilter">
+                <span>Color</span>
+                <select id="subjectColorFilter">
+                    <option value="all">All colors</option>
+                    {% for value, label in subject_color_choices %}
+                    <option value="{{ value }}">{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+        </div>
+
+        <button class="subject-filter-reset" id="subjectFilterReset" type="button" hidden>Reset</button>
+        <span class="subject-filter-count" id="subjectFilterCount" aria-live="polite">{{ total_subjects }} of {{ total_subjects }} cards</span>
+    </div>
+
+    <div class="subject-filter-empty" id="subjectFilterEmpty" hidden>
+        No cards match these filters. Try another status or color.
+    </div>
+    {% endif %}
 
     <div class="subject-grid">
 
         {% for subject in subjects %}
 
-        <div class="subject-card subject-color-{{ subject.color|default:'default' }}">
+        <div class="subject-card subject-color-{{ subject.color|default:'default' }}"
+             data-subject-card
+             data-subject-status="{% if subject.completed %}mastered{% else %}active{% endif %}"
+             data-subject-color="{{ subject.color|default:'default' }}">
 
             <div class="subject-top">
 
@@ -136,4 +171,8 @@
 
 </div>
 
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{% static 'js/subject_filters.js' %}?v=1"></script>
 {% endblock %}
