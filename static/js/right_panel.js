@@ -699,10 +699,11 @@
         panelToggle.setAttribute("aria-expanded", String(!collapsed));
         panelToggle.setAttribute("aria-label", collapsed ? "Show focus panel" : "Hide focus panel");
         panelToggle.title = collapsed ? "Show focus panel" : "Hide focus panel";
-        localStorage.setItem("studyflow-right-panel-collapsed", String(collapsed));
+        sessionStorage.setItem("studyflow-right-panel-collapsed", String(collapsed));
     }
 
-    const panelCollapsed = localStorage.getItem("studyflow-right-panel-collapsed") === "true";
+    const savedPanelPreference = sessionStorage.getItem("studyflow-right-panel-collapsed");
+    const panelCollapsed = savedPanelPreference === null || savedPanelPreference === "true";
     setPanelCollapsed(panelCollapsed);
 
     panelToggle.addEventListener("click", () => {
