@@ -200,6 +200,21 @@ class DashboardAndSearchTests(TestCase):
         self.client.get(reverse("topics:toggle_subject", args=[self.subject.id]))
         self.assertContains(self.client.get(section_url), "1 of 1 mastered")
 
+    def test_mastered_subject_moves_below_active_subjects_even_when_pinned(self):
+        active_subject = Subject.objects.create(section=self.section, title="Organelles")
+        self.subject.is_pinned = True
+        self.subject.save(update_fields=["is_pinned"])
+
+        self.client.get(reverse("topics:toggle_subject", args=[self.subject.id]))
+
+        section_page = self.client.get(
+            reverse("topics:section_detail", args=[self.section.id])
+        )
+        self.assertEqual(
+            list(section_page.context["subjects"]),
+            [active_subject, self.subject],
+        )
+
     def test_subject_delete_cancel_returns_to_section(self):
         response = self.client.get(reverse("topics:delete_subject", args=[self.subject.id]))
         self.assertContains(response, reverse("topics:section_detail", args=[self.subject.section_id]))
