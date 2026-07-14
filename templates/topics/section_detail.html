@@ -60,6 +60,14 @@
                     {% endfor %}
                 </select>
             </label>
+
+            <label class="subject-filter-field" for="subjectOrderFilter">
+                <span>Order</span>
+                <select id="subjectOrderFilter">
+                    <option value="added">Added order</option>
+                    <option value="alphabetical">A&ndash;Z</option>
+                </select>
+            </label>
         </div>
 
         <button class="subject-filter-reset" id="subjectFilterReset" type="button" hidden>Reset</button>
@@ -78,7 +86,10 @@
         <div class="subject-card subject-color-{{ subject.color|default:'default' }}"
              data-subject-card
              data-subject-status="{% if subject.completed %}mastered{% else %}active{% endif %}"
-             data-subject-color="{{ subject.color|default:'default' }}">
+             data-subject-color="{{ subject.color|default:'default' }}"
+             data-subject-pinned="{% if subject.is_pinned %}true{% else %}false{% endif %}"
+             data-subject-order="{{ forloop.counter }}"
+             data-subject-title="{{ subject.title|lower }}">
 
             <div class="subject-top">
 
@@ -174,5 +185,5 @@
 {% endblock %}
 
 {% block extra_scripts %}
-<script src="{% static 'js/subject_filters.js' %}?v=1"></script>
+<script src="{% static 'js/subject_filters.js' %}?v=2"></script>
 {% endblock %}

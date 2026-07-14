@@ -215,10 +215,26 @@ class DashboardAndSearchTests(TestCase):
         self.assertEqual(response.context["subject_color_choices"], Subject.COLOR_CHOICES)
         self.assertContains(response, 'id="subjectStatusFilter"')
         self.assertContains(response, 'id="subjectColorFilter"')
+        self.assertContains(response, 'id="subjectOrderFilter"')
         self.assertContains(response, '<option value="sky">Sky blue</option>', html=True)
         self.assertContains(response, 'data-subject-status="mastered"')
         self.assertContains(response, 'data-subject-color="sky"')
-        self.assertContains(response, "js/subject_filters.js?v=1")
+        self.assertContains(response, 'data-subject-pinned="false"')
+        self.assertContains(response, 'data-subject-title="cells"')
+        self.assertContains(response, "js/subject_filters.js?v=2")
+
+    def test_subjects_keep_the_order_they_were_created(self):
+        second_subject = Subject.objects.create(section=self.section, title="Zoology")
+        third_subject = Subject.objects.create(section=self.section, title="Anatomy")
+
+        section_page = self.client.get(
+            reverse("topics:section_detail", args=[self.section.id])
+        )
+
+        self.assertEqual(
+            list(section_page.context["subjects"]),
+            [self.subject, second_subject, third_subject],
+        )
 
     def test_search_finds_section_and_subject_descriptions(self):
         self.section.description = "Molecular foundations"

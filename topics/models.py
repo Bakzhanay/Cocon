@@ -133,7 +133,7 @@ class Subject(models.Model):
     )
 
     class Meta:
-        ordering = ["completed", "-is_pinned", "title"]
+        ordering = ["completed", "-is_pinned", "created_at", "id"]
 
     def __str__(self):
         return self.title
