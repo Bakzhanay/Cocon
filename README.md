@@ -10,6 +10,8 @@
 
 ![Cocon dashboard with focus analytics, Pomodoro timer, and study navigation](docs/images/cocon-dashboard.png)
 
+![Uploading dark_mode.png…]()
+
 Cocon helps organize learning materials, plan the next step, and understand
 where focused time actually goes.
 Instead of keeping notes, flashcards, timers, and plans across many tabs, Cocon
