@@ -5,6 +5,7 @@
     if (!panel) return;
 
     const appLayout = document.querySelector(".app-layout");
+    const learningSidebar = document.querySelector(".sidebar");
     const panelToggle = document.getElementById("rightSidebarToggle");
     const userIdNode = document.getElementById("studyflow-user-id");
     const userId = userIdNode ? JSON.parse(userIdNode.textContent) : "guest";
@@ -43,6 +44,7 @@
     let completingPhase = false;
     let sessionRequestNonce = 0;
     let pendingSessionPromise = null;
+    let sidebarCollapsedBeforeFocus = null;
 
     function loadState() {
         try {
@@ -693,10 +695,31 @@
         loadCalendarActivity();
     });
 
+    function setLowStimulusNavigationVisible(visible) {
+        if (!learningSidebar) return;
+
+        const shouldShow = visible && document.documentElement.classList.contains("low-stimulus");
+        if (shouldShow) {
+            if (sidebarCollapsedBeforeFocus === null) {
+                sidebarCollapsedBeforeFocus = learningSidebar.classList.contains("collapsed");
+            }
+            learningSidebar.classList.remove("collapsed");
+            appLayout.classList.remove("left-sidebar-is-collapsed");
+            return;
+        }
+
+        if (sidebarCollapsedBeforeFocus !== null) {
+            learningSidebar.classList.toggle("collapsed", sidebarCollapsedBeforeFocus);
+            appLayout.classList.toggle("left-sidebar-is-collapsed", sidebarCollapsedBeforeFocus);
+            sidebarCollapsedBeforeFocus = null;
+        }
+    }
+
     function setPanelCollapsed(collapsed) {
         panel.classList.toggle("is-collapsed", collapsed);
         appLayout.classList.toggle("right-sidebar-is-collapsed", collapsed);
         document.documentElement.classList.toggle("focus-panel-is-open", !collapsed);
+        setLowStimulusNavigationVisible(!collapsed);
         panelToggle.setAttribute("aria-expanded", String(!collapsed));
         panelToggle.setAttribute("aria-label", collapsed ? "Show focus panel" : "Hide focus panel");
         panelToggle.title = collapsed ? "Show focus panel" : "Hide focus panel";
@@ -712,7 +735,11 @@
     });
 
     window.addEventListener("cocon:low-stimulus-change", (event) => {
-        if (event.detail?.active) setPanelCollapsed(true);
+        if (event.detail?.active) {
+            setPanelCollapsed(true);
+        } else {
+            setLowStimulusNavigationVisible(false);
+        }
     });
 
     document.querySelectorAll("[data-open-focus-panel]").forEach((trigger) => {
