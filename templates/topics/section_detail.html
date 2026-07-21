@@ -40,6 +40,34 @@
                 Show statistics
             </button>
 
+            <div class="subject-history-actions" aria-label="Subject history">
+                <form method="post" action="{% url 'topics:undo_subject_action' section.id %}">
+                    {% csrf_token %}
+                    <button type="submit" class="secondary-btn subject-history-button"{% if not can_undo_subject_action %} disabled{% endif %} title="Undo the last subject add or delete">
+                        <span aria-hidden="true">&#8630;</span> Undo
+                    </button>
+                </form>
+                <form method="post" action="{% url 'topics:redo_subject_action' section.id %}">
+                    {% csrf_token %}
+                    <button type="submit" class="secondary-btn subject-history-button"{% if not can_redo_subject_action %} disabled{% endif %} title="Redo the last undone subject action">
+                        Redo <span aria-hidden="true">&#8631;</span>
+                    </button>
+                </form>
+            </div>
+
+            {% if subjects %}
+            <button class="secondary-btn" id="subjectSelectionStart" type="button">
+                Select cards
+            </button>
+            {% endif %}
+
+            <a href="{% url 'topics:bulk_add_subjects' section.id %}"
+               class="secondary-btn">
+
+                Bulk add
+
+            </a>
+
             <a href="{% url 'topics:add_subject' section.id %}"
                class="primary-btn">
 
@@ -88,6 +116,20 @@
     <div class="subject-filter-empty" id="subjectFilterEmpty" hidden>
         No cards match these filters. Try another status or color.
     </div>
+
+    <div class="subject-selection-toolbar" id="subjectSelectionToolbar" hidden>
+        <label>
+            <input type="checkbox" id="subjectSelectAll">
+            <span>Select all visible</span>
+        </label>
+        <span id="subjectSelectionCount" aria-live="polite">0 selected</span>
+        <div>
+            <button type="button" class="secondary-btn" id="subjectSelectionCancel">Cancel</button>
+            <button type="submit" class="danger-btn" form="bulkDeleteSubjectsForm" id="subjectBulkDeleteButton" disabled>
+                Delete selected
+            </button>
+        </div>
+    </div>
     {% endif %}
 
     <div class="subject-grid">
@@ -101,6 +143,16 @@
              data-subject-pinned="{% if subject.is_pinned %}true{% else %}false{% endif %}"
              data-subject-order="{{ forloop.counter }}"
              data-subject-title="{{ subject.title|lower }}">
+
+            <label class="subject-selection-check" title="Select {{ subject.title }}">
+                <input type="checkbox"
+                       name="subject_ids"
+                       value="{{ subject.id }}"
+                       form="bulkDeleteSubjectsForm"
+                       data-subject-selector>
+                <span aria-hidden="true"></span>
+                <span class="sr-only">Select {{ subject.title }}</span>
+            </label>
 
             <div class="subject-top">
 
@@ -201,11 +253,19 @@
 
     </div>
 
+    <form method="post"
+          action="{% url 'topics:bulk_delete_subjects' section.id %}"
+          id="bulkDeleteSubjectsForm"
+          data-confirm-message="Delete the selected subjects? You can undo this action.">
+        {% csrf_token %}
+    </form>
+
 </div>
 
 {% endblock %}
 
 {% block extra_scripts %}
 <script src="{% static 'js/subject_filters.js' %}?v=2"></script>
+<script src="{% static 'js/subject_bulk_actions.js' %}?v=1"></script>
 <script src="{% static 'js/focus_stats.js' %}?v=1"></script>
 {% endblock %}

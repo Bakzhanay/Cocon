@@ -76,6 +76,11 @@ class Section(models.Model):
     def __str__(self):
         return self.title
 
+
+class ActiveSubjectManager(models.Manager):
+    def get_queryset(self):
+        return super().get_queryset().filter(is_deleted=False)
+
 class Subject(models.Model):
     PRIORITY_CHOICES = [
         ("low", "Low"),
@@ -132,8 +137,74 @@ class Subject(models.Model):
         default="normal",
     )
 
+    is_deleted = models.BooleanField(default=False, db_index=True)
+
+    deleted_at = models.DateTimeField(null=True, blank=True)
+
+    objects = ActiveSubjectManager()
+    all_objects = models.Manager()
+
     class Meta:
         ordering = ["completed", "-is_pinned", "created_at", "id"]
 
     def __str__(self):
         return self.title
+
+
+class SubjectSubtitlePreset(models.Model):
+    section = models.ForeignKey(
+        Section,
+        on_delete=models.CASCADE,
+        related_name="subtitle_presets",
+    )
+
+    value = models.CharField(max_length=240)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    last_used_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-last_used_at", "value"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["section", "value"],
+                name="unique_subject_subtitle_per_section",
+            ),
+        ]
+
+    def __str__(self):
+        return self.value
+
+
+class SubjectHistoryAction(models.Model):
+    ACTION_CHOICES = [
+        ("create", "Added subjects"),
+        ("delete", "Deleted subjects"),
+    ]
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="subject_history_actions",
+    )
+
+    section = models.ForeignKey(
+        Section,
+        on_delete=models.CASCADE,
+        related_name="subject_history_actions",
+    )
+
+    action_type = models.CharField(max_length=10, choices=ACTION_CHOICES)
+
+    subject_ids = models.JSONField(default=list)
+
+    is_undone = models.BooleanField(default=False)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at", "-id"]
+
+    def __str__(self):
+        return f"{self.get_action_type_display()} ({len(self.subject_ids)})"

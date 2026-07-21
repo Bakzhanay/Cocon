@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load static %}
 
 {% block content %}
 <div class="dashboard-shell">
@@ -84,7 +85,7 @@
                         {% if recent_session_resume_url %}
                         <a class="continue-heading-action" href="{{ recent_session_resume_url }}">Continue studying <span aria-hidden="true">&rarr;</span></a>
                         {% else %}
-                        <button class="continue-heading-action" type="button" data-open-focus-panel>Continue studying <span aria-hidden="true">&rarr;</span></button>
+                        <span>Continue studying</span>
                         {% endif %}
                     </h2>
                 </div>
@@ -100,23 +101,7 @@
                     {% endif %}
                     <p>{{ recent_session_minutes }} focused minutes in your last session.</p>
                 </div>
-                {% if recent_session_resume_url %}
-                    {% if recent_session.subject %}
-                    {% if recent_session.activity_type == "flashcards" %}
-                    <a class="dashboard-action" href="{{ recent_session_resume_url }}">Review flashcards</a>
-                    {% elif recent_session.activity_type == "notes" %}
-                    <a class="dashboard-action" href="{{ recent_session_resume_url }}">Continue notes</a>
-                    {% else %}
-                    <a class="dashboard-action" href="{{ recent_session_resume_url }}">Open subject</a>
-                    {% endif %}
-                    {% elif recent_session.section %}
-                    <a class="dashboard-action" href="{{ recent_session_resume_url }}">Open section</a>
-                    {% else %}
-                    <a class="dashboard-action" href="{{ recent_session_resume_url }}">Open topic</a>
-                    {% endif %}
-                {% else %}
-                    <button class="dashboard-action dashboard-action-button" type="button" data-open-focus-panel>Start another session</button>
-                {% endif %}
+                <button class="dashboard-action dashboard-action-button" type="button" data-open-focus-panel>Start studying</button>
             {% else %}
                 <div class="dashboard-empty"><p>Complete your first focus session and it will appear here.</p></div>
                 <button class="dashboard-action dashboard-action-button" type="button" data-open-focus-panel>Start study session</button>
@@ -204,4 +189,8 @@
         {% else %}<div class="dashboard-empty"><p>Your completed focus sessions will build a timeline here.</p></div>{% endif %}
     </section>
 </div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{% static 'js/dashboard_tasks.js' %}?v=2"></script>
 {% endblock %}

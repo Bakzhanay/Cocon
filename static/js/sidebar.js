@@ -128,6 +128,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
         toggleButton.addEventListener("click", () => {
 
+            if (document.documentElement.classList.contains("low-stimulus")) {
+                window.dispatchEvent(new CustomEvent("cocon:set-low-stimulus-navigation", {
+                    detail: { visible: false },
+                }));
+                return;
+            }
+
             const isCollapsed = sidebar.classList.toggle("collapsed");
             appLayout.classList.toggle("left-sidebar-is-collapsed", isCollapsed);
             localStorage.setItem("cocon-left-sidebar-collapsed", String(isCollapsed));

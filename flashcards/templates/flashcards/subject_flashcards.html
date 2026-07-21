@@ -21,7 +21,7 @@
 
     {% if total_count %}
     <div class="flashcard-progress-card">
-        <div><strong>{{ learned_count }} of {{ total_count }}</strong><span>scheduled for future review</span></div>
+        <div><strong>{{ learned_count }} of {{ total_count }}</strong><span>mastered cards</span></div>
         <div class="flashcard-progress-track"><i style="width: {{ progress_percent }}%"></i></div>
         <span>{{ progress_percent }}%</span>
     </div>
@@ -30,7 +30,7 @@
     {% if active_cards or learned_cards %}
     <div class="flashcard-list">
         {% for card in active_cards %}{% include "flashcards/_flashcard.html" %}{% endfor %}
-        {% if learned_cards %}<div class="flashcard-list-divider"><span>Scheduled</span><i></i></div>{% endif %}
+        {% if learned_cards %}<div class="flashcard-list-divider"><span>Mastered</span><i></i></div>{% endif %}
         {% for card in learned_cards %}{% include "flashcards/_flashcard.html" %}{% endfor %}
     </div>
     {% else %}

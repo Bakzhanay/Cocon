@@ -13,11 +13,11 @@
 
     <link rel="icon" type="image/png" sizes="64x64" href="{% static 'images/cocon-logo.png' %}">
 
-    <link rel="stylesheet" href="{% static 'css/style.css' %}?v=11">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}?v=13">
 
-    <link rel="stylesheet" href="{% static 'css/right_panel.css' %}">
+    <link rel="stylesheet" href="{% static 'css/right_panel.css' %}?v=2">
 
-    <link rel="stylesheet" href="{% static 'css/dashboard.css' %}?v=6">
+    <link rel="stylesheet" href="{% static 'css/dashboard.css' %}?v=7">
 
     <link rel="stylesheet" href="{% static 'css/analytics.css' %}?v=1">
 
@@ -27,7 +27,7 @@
 
     <link rel="stylesheet" href="{% static 'css/search.css' %}">
 
-    <link rel="stylesheet" href="{% static 'css/modes.css' %}?v=10">
+    <link rel="stylesheet" href="{% static 'css/modes.css' %}?v=12">
 
     <script>
         if (localStorage.getItem("cocon-theme") === "dark") document.documentElement.classList.add("dark-mode");
@@ -252,6 +252,25 @@
 
                 <a href="{% url 'topics:analytics' %}" class="topbar-analytics-link">Analytics</a>
 
+                <div class="low-stimulus-panel-controls" aria-label="Low-stimulus panels">
+                    <button
+                        id="lowStimulusNavigationToggle"
+                        type="button"
+                        aria-label="Show study navigation"
+                        aria-expanded="false"
+                        title="Show study navigation">
+                        <span aria-hidden="true">&#9776;</span>
+                    </button>
+                    <button
+                        id="lowStimulusFocusToggle"
+                        type="button"
+                        aria-label="Show focus panel"
+                        aria-expanded="false"
+                        title="Show focus panel">
+                        <span aria-hidden="true">&#9201;</span>
+                    </button>
+                </div>
+
                 <div class="mode-controls" aria-label="Display modes">
                     <button id="themeToggle" type="button" aria-pressed="false" title="Toggle dark mode">&#9680;</button>
                     <button id="stimulusToggle" type="button" aria-pressed="false" title="Toggle low-stimulus mode">&#9678;</button>
@@ -283,6 +302,14 @@
 
         <section class="page-content">
 
+            {% if messages %}
+            <div class="page-messages" role="status" aria-live="polite">
+                {% for message in messages %}
+                <div class="page-message page-message-{{ message.tags|default:'info' }}">{{ message }}</div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
             {% block content %}
 
             {% endblock %}
@@ -304,9 +331,9 @@
     };
 </script>
 
-<script src="{% static 'js/sidebar.js' %}?v=3"></script>
+<script src="{% static 'js/sidebar.js' %}?v=4"></script>
 
-<script src="{% static 'js/right_panel.js' %}?v=10"></script>
+<script src="{% static 'js/right_panel.js' %}?v=13"></script>
 
 <script src="{% static 'js/modes.js' %}?v=3"></script>
 

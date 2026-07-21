@@ -17,21 +17,21 @@ from .models import Flashcard
 def owned_flashcards(user):
     return Flashcard.objects.filter(
         Q(section__topic__user=user)
-        | Q(subject__section__topic__user=user)
+        | Q(
+            subject__is_deleted=False,
+            subject__section__topic__user=user,
+        )
     ).distinct()
 
 
 def split_cards(cards):
-    now = timezone.now()
     active = []
     learned = []
     for card in cards:
-        is_due = card.next_review_at and card.next_review_at <= now
-        is_new = not card.learned and card.next_review_at is None
-        if is_new or is_due:
-            active.append(card)
-        else:
+        if card.learned:
             learned.append(card)
+        else:
+            active.append(card)
     return active, learned
 
 
@@ -78,7 +78,9 @@ def section_flashcards(request, section_id):
         id=section_id,
         topic__user=request.user,
     )
-    active_cards, learned_cards = split_cards(section.flashcards.all())
+    active_cards, learned_cards = split_cards(
+        section.flashcards.order_by("created_at", "id")
+    )
     total, learned_count, progress_percent = card_progress(active_cards, learned_cards)
     return render(request, "flashcards/section_flashcards.html", {
         "section": section,
@@ -160,7 +162,9 @@ def subject_flashcards(request, subject_id):
         id=subject_id,
         section__topic__user=request.user,
     )
-    active_cards, learned_cards = split_cards(subject.flashcards.all())
+    active_cards, learned_cards = split_cards(
+        subject.flashcards.order_by("created_at", "id")
+    )
     order = request.session.get(f"flashcard_order_{subject.id}")
     if order:
         by_id = {card.id: card for card in active_cards}
@@ -246,13 +250,11 @@ def review_flashcard(request, flashcard_id):
         flashcard.interval_days = 0
         flashcard.ease_factor = max(Decimal("1.30"), ease - Decimal("0.20"))
         flashcard.next_review_at = now + timedelta(minutes=10)
-        flashcard.learned = False
     elif rating == "hard":
         flashcard.repetitions += 1
         flashcard.interval_days = max(1, round((flashcard.interval_days or 1) * 1.2))
         flashcard.ease_factor = max(Decimal("1.30"), ease - Decimal("0.15"))
         flashcard.next_review_at = now + timedelta(days=flashcard.interval_days)
-        flashcard.learned = False
     elif rating == "good":
         flashcard.repetitions += 1
         if flashcard.repetitions == 1:
@@ -262,7 +264,6 @@ def review_flashcard(request, flashcard_id):
         else:
             flashcard.interval_days = max(1, round((flashcard.interval_days or 1) * float(ease)))
         flashcard.next_review_at = now + timedelta(days=flashcard.interval_days)
-        flashcard.learned = True
     else:
         flashcard.repetitions += 1
         flashcard.ease_factor = min(Decimal("3.50"), ease + Decimal("0.15"))
@@ -271,7 +272,6 @@ def review_flashcard(request, flashcard_id):
             round(flashcard.interval_days * float(flashcard.ease_factor) * 1.3),
         )
         flashcard.next_review_at = now + timedelta(days=flashcard.interval_days)
-        flashcard.learned = True
 
     flashcard.last_reviewed_at = now
     flashcard.save(update_fields=[
@@ -280,7 +280,6 @@ def review_flashcard(request, flashcard_id):
         "ease_factor",
         "next_review_at",
         "last_reviewed_at",
-        "learned",
     ])
     if request.POST.get("return_to_due") == "1":
         return redirect("flashcards:due_flashcards")
@@ -294,9 +293,24 @@ def shuffle_subject_flashcards(request, subject_id):
         id=subject_id,
         section__topic__user=request.user,
     )
-    ids = list(subject.flashcards.filter(learned=False).values_list("id", flat=True))
-    random.shuffle(ids)
-    request.session[f"flashcard_order_{subject.id}"] = ids
+    ids = list(
+        subject.flashcards
+        .filter(learned=False)
+        .order_by("created_at", "id")
+        .values_list("id", flat=True)
+    )
+    session_key = f"flashcard_order_{subject.id}"
+    stored_order = request.session.get(session_key, [])
+    current_order = [card_id for card_id in stored_order if card_id in ids]
+    current_order.extend(card_id for card_id in ids if card_id not in current_order)
+
+    shuffled_order = current_order.copy()
+    if len(shuffled_order) > 1:
+        random.shuffle(shuffled_order)
+        if shuffled_order == current_order:
+            shuffled_order = current_order[1:] + current_order[:1]
+
+    request.session[session_key] = shuffled_order
     return redirect("flashcards:subject_flashcards", subject_id=subject_id)
 
 

@@ -6,6 +6,8 @@ from django.urls import reverse
 
 from topics.models import Topic
 
+from .models import StudySessionSegment
+
 
 ACTIVITY_LABELS = {
     "notes": "Notes",
@@ -34,15 +36,32 @@ def _latest(current, candidate):
 
 
 def aggregate_sessions(sessions):
-    rows = sessions.values(
+    summary = sessions.aggregate(
+        total_seconds=Sum("duration_seconds"),
+        session_count=Count("id"),
+    )
+    segment_session_ids = StudySessionSegment.objects.filter(
+        session_id__in=sessions.values("id")
+    ).values("session_id")
+    legacy_rows = sessions.exclude(id__in=segment_session_ids).values(
         "topic_id",
         "section_id",
         "subject_id",
         "activity_type",
     ).annotate(
         total_seconds=Sum("duration_seconds"),
-        session_count=Count("id"),
         last_at=Max("ended_at"),
+    )
+    segment_rows = StudySessionSegment.objects.filter(
+        session_id__in=sessions.values("id")
+    ).values(
+        "topic_id",
+        "section_id",
+        "subject_id",
+        "activity_type",
+    ).annotate(
+        total_seconds=Sum("duration_seconds"),
+        last_at=Max("session__ended_at"),
     )
 
     totals = {
@@ -61,15 +80,9 @@ def aggregate_sessions(sessions):
         "subject": defaultdict(int),
         "general": defaultdict(int),
     }
-    total_seconds = 0
-    session_count = 0
-
-    for row in rows:
+    for row in [*legacy_rows, *segment_rows]:
         seconds = row["total_seconds"] or 0
-        count = row["session_count"] or 0
         activity_type = row["activity_type"] or "general"
-        total_seconds += seconds
-        session_count += count
 
         for level in ("topic", "section", "subject"):
             object_id = row[f"{level}_id"]
@@ -93,8 +106,8 @@ def aggregate_sessions(sessions):
         "totals": totals,
         "latest": latest,
         "activities": activities,
-        "total_seconds": total_seconds,
-        "session_count": session_count,
+        "total_seconds": summary["total_seconds"] or 0,
+        "session_count": summary["session_count"] or 0,
     }
 
 

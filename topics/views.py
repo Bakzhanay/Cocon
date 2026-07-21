@@ -6,15 +6,23 @@ from datetime import datetime, time, timedelta
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.db import transaction
 from django.db.models import Count
 from django.http import HttpResponseBadRequest
 from django.urls import reverse
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 
-from .models import Topic, Section, Subject
-from .forms import TopicForm, SectionForm, SubjectForm
+from .models import (
+    Topic,
+    Section,
+    Subject,
+    SubjectHistoryAction,
+    SubjectSubtitlePreset,
+)
+from .forms import TopicForm, SectionForm, SubjectForm, BulkSubjectForm
 
 from flashcards.models import Flashcard
 from notes.models import Note, QuickNote
@@ -94,6 +102,67 @@ def _add_focus_to_subjects(subjects, snapshot):
         subject.flashcards_focus_duration = format_duration(flashcards_seconds)
         subject.subject_study_seconds = subject_study_seconds
         subject.subject_study_duration = format_duration(subject_study_seconds)
+
+
+def _subject_subtitle_history(section, limit=20):
+    return list(
+        section.subtitle_presets.values_list("value", flat=True)[:limit]
+    )
+
+
+def _remember_subject_subtitles(section, values):
+    now = timezone.now()
+    unique_values = []
+    seen = set()
+    for raw_value in values:
+        value = (raw_value or "").strip()
+        normalized = value.casefold()
+        if not value or normalized in seen:
+            continue
+        seen.add(normalized)
+        unique_values.append(value)
+
+    for value in unique_values:
+        existing = section.subtitle_presets.filter(value__iexact=value).first()
+        if existing:
+            SubjectSubtitlePreset.objects.filter(pk=existing.pk).update(
+                last_used_at=now
+            )
+        else:
+            SubjectSubtitlePreset.objects.create(section=section, value=value)
+
+
+def _record_subject_action(user, section, action_type, subject_ids):
+    """Add an undoable subject action and discard an abandoned redo branch."""
+    subject_ids = [subject_id for subject_id in subject_ids if subject_id]
+    if not subject_ids:
+        return None
+
+    section.subject_history_actions.filter(user=user, is_undone=True).delete()
+    action = SubjectHistoryAction.objects.create(
+        user=user,
+        section=section,
+        action_type=action_type,
+        subject_ids=subject_ids,
+    )
+    old_action_ids = list(
+        section.subject_history_actions.filter(user=user)
+        .order_by("-created_at", "-id")
+        .values_list("id", flat=True)[50:]
+    )
+    if old_action_ids:
+        SubjectHistoryAction.objects.filter(id__in=old_action_ids).delete()
+    return action
+
+
+def _set_subjects_deleted(section, subject_ids, deleted):
+    return Subject.all_objects.filter(
+        section=section,
+        id__in=subject_ids,
+    ).update(
+        is_deleted=deleted,
+        deleted_at=timezone.now() if deleted else None,
+    )
 
 # Create your views here.
 @login_required
@@ -250,7 +319,12 @@ def topic_detail(request, topic_id):
 
     sections = list(
         topic.sections
-        .annotate(subject_count=Count("subjects"))
+        .annotate(
+            subject_count=Count(
+                "subjects",
+                filter=Q(subjects__is_deleted=False),
+            )
+        )
         .order_by("-is_pinned", "title")
     )
     focus_snapshot = _focus_snapshot(request.user)
@@ -400,6 +474,14 @@ def section_detail(request, section_id):
             "notes": section.notes.all().order_by("-updated_at"),
             "current_topic": section.topic.id,
             "current_section": section.id,
+            "can_undo_subject_action": section.subject_history_actions.filter(
+                user=request.user,
+                is_undone=False,
+            ).exists(),
+            "can_redo_subject_action": section.subject_history_actions.filter(
+                user=request.user,
+                is_undone=True,
+            ).exists(),
         },
     )
 
@@ -421,6 +503,8 @@ def add_subject(request, section_id):
             subject = form.save(commit=False)
             subject.section = section
             subject.save()
+            _remember_subject_subtitles(section, [subject.description])
+            _record_subject_action(request.user, section, "create", [subject.id])
 
             return redirect(
                 "topics:section_detail",
@@ -437,8 +521,107 @@ def add_subject(request, section_id):
         {
             "form": form,
             "section": section,
+            "subtitle_history": _subject_subtitle_history(section),
         },
     )
+
+
+@login_required
+def bulk_add_subjects(request, section_id):
+    section = get_object_or_404(
+        Section,
+        id=section_id,
+        topic__user=request.user,
+    )
+
+    if request.method == "POST":
+        form = BulkSubjectForm(request.POST)
+        if form.is_valid():
+            existing_titles = {
+                title.casefold()
+                for title in section.subjects.values_list("title", flat=True)
+            }
+            pending_subjects = []
+            subtitles = []
+            skipped = 0
+
+            for entry in form.cleaned_data["parsed_entries"]:
+                normalized_title = entry["title"].casefold()
+                if normalized_title in existing_titles:
+                    skipped += 1
+                    continue
+                existing_titles.add(normalized_title)
+                subtitles.append(entry["description"])
+                pending_subjects.append(
+                    Subject(
+                        section=section,
+                        title=entry["title"],
+                        description=entry["description"],
+                        color=form.cleaned_data["color"],
+                        weekly_goal_minutes=form.cleaned_data["weekly_goal_minutes"],
+                        priority=form.cleaned_data["priority"],
+                    )
+                )
+
+            with transaction.atomic():
+                Subject.objects.bulk_create(pending_subjects)
+                _remember_subject_subtitles(section, subtitles)
+                _record_subject_action(
+                    request.user,
+                    section,
+                    "create",
+                    [subject.id for subject in pending_subjects],
+                )
+
+            if pending_subjects:
+                summary = f"Added {len(pending_subjects)} subject(s)."
+                if skipped:
+                    summary += f" Skipped {skipped} duplicate(s)."
+                messages.success(request, summary)
+            else:
+                messages.info(
+                    request,
+                    "No new subjects were added because every name already exists.",
+                )
+            return redirect("topics:section_detail", section_id=section.id)
+    else:
+        form = BulkSubjectForm()
+
+    return render(
+        request,
+        "topics/bulk_add_subjects.html",
+        {
+            "form": form,
+            "section": section,
+            "subtitle_history": _subject_subtitle_history(section),
+            "current_topic": section.topic_id,
+            "current_section": section.id,
+        },
+    )
+
+
+@login_required
+@require_POST
+def clear_subject_subtitle_history(request, section_id):
+    section = get_object_or_404(
+        Section,
+        id=section_id,
+        topic__user=request.user,
+    )
+    deleted_count, _ = section.subtitle_presets.all().delete()
+    if deleted_count:
+        messages.success(request, "Saved subtitles cleared.")
+    else:
+        messages.info(request, "There were no saved subtitles to clear.")
+
+    next_url = request.POST.get("next")
+    if next_url and url_has_allowed_host_and_scheme(
+        next_url,
+        allowed_hosts={request.get_host()},
+        require_https=request.is_secure(),
+    ):
+        return redirect(next_url)
+    return redirect("topics:add_subject", section_id=section.id)
 
 @login_required
 def subject_detail(request, subject_id):
@@ -505,7 +688,8 @@ def edit_subject(request, subject_id):
 
         if form.is_valid():
 
-            form.save()
+            subject = form.save()
+            _remember_subject_subtitles(subject.section, [subject.description])
 
             return redirect(
                 "topics:section_detail",
@@ -522,6 +706,7 @@ def edit_subject(request, subject_id):
         {
             "form": form,
             "subject": subject,
+            "subtitle_history": _subject_subtitle_history(subject.section),
         },
     )
 
@@ -536,13 +721,15 @@ def delete_subject(request, subject_id):
 
     if request.method == "POST":
 
-        section_id = subject.section.id
-
-        subject.delete()
+        section = subject.section
+        with transaction.atomic():
+            _set_subjects_deleted(section, [subject.id], True)
+            _record_subject_action(request.user, section, "delete", [subject.id])
+        messages.success(request, f'"{subject.title}" deleted. You can undo this action.')
 
         return redirect(
             "topics:section_detail",
-            section_id=section_id,
+            section_id=section.id,
         )
 
     return render(
@@ -552,6 +739,96 @@ def delete_subject(request, subject_id):
             "subject": subject,
         },
     )
+
+
+@login_required
+@require_POST
+def bulk_delete_subjects(request, section_id):
+    section = get_object_or_404(
+        Section,
+        id=section_id,
+        topic__user=request.user,
+    )
+    try:
+        requested_ids = {
+            int(value) for value in request.POST.getlist("subject_ids")
+        }
+    except (TypeError, ValueError):
+        requested_ids = set()
+
+    subject_ids = list(
+        section.subjects.filter(id__in=requested_ids).values_list("id", flat=True)
+    )
+    if not subject_ids:
+        messages.info(request, "Select at least one subject to delete.")
+        return redirect("topics:section_detail", section_id=section.id)
+
+    with transaction.atomic():
+        _set_subjects_deleted(section, subject_ids, True)
+        _record_subject_action(request.user, section, "delete", subject_ids)
+    messages.success(
+        request,
+        f"Deleted {len(subject_ids)} subject(s). You can undo this action.",
+    )
+    return redirect("topics:section_detail", section_id=section.id)
+
+
+@login_required
+@require_POST
+def undo_subject_action(request, section_id):
+    section = get_object_or_404(
+        Section,
+        id=section_id,
+        topic__user=request.user,
+    )
+    with transaction.atomic():
+        action = (
+            section.subject_history_actions.select_for_update()
+            .filter(user=request.user, is_undone=False)
+            .order_by("-created_at", "-id")
+            .first()
+        )
+        if not action:
+            messages.info(request, "There is nothing to undo.")
+            return redirect("topics:section_detail", section_id=section.id)
+
+        should_delete = action.action_type == "create"
+        changed = _set_subjects_deleted(section, action.subject_ids, should_delete)
+        action.is_undone = True
+        action.save(update_fields=["is_undone"])
+
+    verb = "addition" if action.action_type == "create" else "deletion"
+    messages.success(request, f"Undid the last {verb} ({changed} subject(s)).")
+    return redirect("topics:section_detail", section_id=section.id)
+
+
+@login_required
+@require_POST
+def redo_subject_action(request, section_id):
+    section = get_object_or_404(
+        Section,
+        id=section_id,
+        topic__user=request.user,
+    )
+    with transaction.atomic():
+        action = (
+            section.subject_history_actions.select_for_update()
+            .filter(user=request.user, is_undone=True)
+            .order_by("created_at", "id")
+            .first()
+        )
+        if not action:
+            messages.info(request, "There is nothing to redo.")
+            return redirect("topics:section_detail", section_id=section.id)
+
+        should_delete = action.action_type == "delete"
+        changed = _set_subjects_deleted(section, action.subject_ids, should_delete)
+        action.is_undone = False
+        action.save(update_fields=["is_undone"])
+
+    verb = "addition" if action.action_type == "create" else "deletion"
+    messages.success(request, f"Redid the last {verb} ({changed} subject(s)).")
+    return redirect("topics:section_detail", section_id=section.id)
 
 @login_required
 def toggle_subject(request, subject_id):
@@ -610,13 +887,17 @@ def search(request):
 
     flashcards = Flashcard.objects.filter(
         Q(section__topic__user=request.user) |
-        Q(subject__section__topic__user=request.user)
+        Q(
+            subject__is_deleted=False,
+            subject__section__topic__user=request.user,
+        )
     ).filter(
         Q(question__icontains=query) |
         Q(answer__icontains=query)
     ).distinct()
 
     notes = Note.objects.filter(
+        Q(section__isnull=False) | Q(subject__is_deleted=False),
         owner=request.user,
     ).filter(
         Q(title__icontains=query) |
@@ -716,7 +997,10 @@ def dashboard(request):
 
     owned_cards = Flashcard.objects.filter(
         Q(section__topic__user=request.user)
-        | Q(subject__section__topic__user=request.user)
+        | Q(
+            subject__is_deleted=False,
+            subject__section__topic__user=request.user,
+        )
     ).distinct()
     due_flashcards = owned_cards.filter(
         Q(next_review_at__lte=now)
@@ -731,7 +1015,10 @@ def dashboard(request):
         week_start_at,
         completed_sessions,
     )
-    user_topics = list(Topic.objects.filter(user=request.user))
+    user_topics = list(
+        Topic.objects.filter(user=request.user)
+        .prefetch_related("sections__subjects")
+    )
     focus_by_topic = focus["tree"]
     needs_attention = focus["attention"]
 
@@ -762,10 +1049,20 @@ def dashboard(request):
         "recent_session_resume_url": _study_session_resume_url(recent_session),
         "recent_session_minutes": round(recent_session.duration_seconds / 60) if recent_session else 0,
         "recent_sessions": completed_sessions.select_related("topic", "section", "subject").order_by("-ended_at")[:6],
-        "recent_notes": Note.objects.filter(owner=request.user).order_by("-updated_at")[:4],
-        "pinned_notes": Note.objects.filter(owner=request.user, is_pinned=True).order_by("-updated_at")[:5],
+        "recent_notes": Note.objects.filter(
+            Q(section__isnull=False) | Q(subject__is_deleted=False),
+            owner=request.user,
+        ).order_by("-updated_at")[:4],
+        "pinned_notes": Note.objects.filter(
+            Q(section__isnull=False) | Q(subject__is_deleted=False),
+            owner=request.user,
+            is_pinned=True,
+        ).order_by("-updated_at")[:5],
         "quick_notes": QuickNote.objects.filter(owner=request.user).order_by("-is_pinned", "-updated_at")[:3],
-        "tasks": Task.objects.filter(user=request.user).order_by("completed", "due_date", "-created_at")[:10],
+        "tasks": Task.objects.filter(user=request.user)
+        .select_related("topic", "section", "subject")
+        .order_by("completed", "due_date", "-created_at")[:10],
+        "task_topics": user_topics,
         "today": today,
         "pinned_dashboard_widgets": pinned_dashboard_widgets,
         "expanded_dashboard_widgets": expanded_dashboard_widgets,

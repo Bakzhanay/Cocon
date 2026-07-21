@@ -7,6 +7,8 @@
     const appLayout = document.querySelector(".app-layout");
     const learningSidebar = document.querySelector(".sidebar");
     const panelToggle = document.getElementById("rightSidebarToggle");
+    const lowStimulusNavigationToggle = document.getElementById("lowStimulusNavigationToggle");
+    const lowStimulusFocusToggle = document.getElementById("lowStimulusFocusToggle");
     const userIdNode = document.getElementById("studyflow-user-id");
     const userId = userIdNode ? JSON.parse(userIdNode.textContent) : "guest";
     const storageKey = `studyflow-pomodoro-v1-${userId}`;
@@ -19,6 +21,8 @@
     const timerStatus = document.getElementById("timerStatus");
     const timerModeLabel = document.getElementById("timerModeLabel");
     const timerMessage = document.getElementById("timerMessage");
+    const sessionContext = document.getElementById("sessionContext");
+    const defaultSessionContextHTML = sessionContext ? sessionContext.innerHTML : "";
     const startButton = document.getElementById("timerStart");
     const pauseButton = document.getElementById("timerPause");
     const resetButton = document.getElementById("timerReset");
@@ -37,6 +41,8 @@
         sessionId: null,
         pausedAt: null,
         pausedSeconds: 0,
+        taskId: null,
+        taskTitle: "",
     };
 
     let state = loadState();
@@ -44,6 +50,7 @@
     let completingPhase = false;
     let sessionRequestNonce = 0;
     let pendingSessionPromise = null;
+    let pendingContextPromise = null;
     let sidebarCollapsedBeforeFocus = null;
 
     function loadState() {
@@ -86,6 +93,27 @@
         return (state.phase === "study" ? state.studyMinutes : state.breakMinutes) * 60;
     }
 
+    function renderSessionContext() {
+        if (!sessionContext) return;
+        if (!state.taskId) {
+            sessionContext.innerHTML = defaultSessionContextHTML;
+            return;
+        }
+
+        const marker = document.createElement("span");
+        marker.setAttribute("aria-hidden", "true");
+        marker.textContent = "●";
+        const label = document.createTextNode(` Counting toward ${state.taskTitle || "study plan"}`);
+        const clearButton = document.createElement("button");
+        clearButton.type = "button";
+        clearButton.className = "session-task-clear";
+        clearButton.dataset.clearStudyTask = "";
+        clearButton.setAttribute("aria-label", "Stop counting toward this study plan");
+        clearButton.title = "Clear study plan";
+        clearButton.textContent = "×";
+        sessionContext.replaceChildren(marker, label, clearButton);
+    }
+
     function renderTimer() {
         const total = Math.max(1, phaseTotalSeconds());
         const elapsedRatio = Math.min(1, Math.max(0, (total - state.remaining) / total));
@@ -126,6 +154,7 @@
         breakChoices.querySelectorAll("button").forEach((button) => {
             button.classList.toggle("is-selected", Number(button.dataset.minutes) === state.breakMinutes);
         });
+        renderSessionContext();
     }
 
     function setMessage(message) {
@@ -172,6 +201,42 @@
         };
     }
 
+    function elapsedStudySeconds() {
+        if (state.phase !== "study") return 0;
+        const total = state.studyMinutes * 60;
+        let remaining = state.remaining;
+        if (state.running && state.endAt) {
+            remaining = Math.max(0, Math.ceil((state.endAt - Date.now()) / 1000));
+        }
+        return Math.max(0, Math.min(total, total - remaining));
+    }
+
+    async function syncStudySessionContext() {
+        if (
+            state.phase !== "study"
+            || !state.sessionId
+            || (!state.running && !state.paused)
+        ) return;
+        if (pendingContextPromise) return pendingContextPromise;
+
+        const sessionId = state.sessionId;
+        pendingContextPromise = postJSON("/study/context/", {
+            session_id: sessionId,
+            elapsed_seconds: elapsedStudySeconds(),
+            ...currentStudyContext(),
+        })
+            .catch((error) => {
+                if (Number(state.sessionId) === Number(sessionId)) {
+                    setMessage(error.message);
+                }
+                return null;
+            })
+            .finally(() => {
+                pendingContextPromise = null;
+            });
+        return pendingContextPromise;
+    }
+
     async function createStudySession() {
         if (state.phase !== "study" || state.sessionId || pendingSessionPromise) return state.sessionId;
 
@@ -179,6 +244,7 @@
         const payload = {
             ...currentStudyContext(),
             planned_duration_seconds: state.studyMinutes * 60,
+            task_id: state.taskId,
         };
 
         pendingSessionPromise = postJSON("/study/start/", payload)
@@ -193,6 +259,12 @@
                 return data.session_id;
             })
             .catch((error) => {
+                if (state.taskId) {
+                    state.taskId = null;
+                    state.taskTitle = "";
+                    saveState();
+                    renderTimer();
+                }
                 setMessage(error.message);
                 return null;
             })
@@ -205,18 +277,34 @@
 
     async function finishStudySession() {
         if (pendingSessionPromise) await pendingSessionPromise;
+        if (pendingContextPromise) await pendingContextPromise;
         const sessionId = state.sessionId;
         state.sessionId = null;
         saveState();
         if (!sessionId) return false;
 
         try {
-            await postJSON("/study/stop/", {
+            const data = await postJSON("/study/stop/", {
                 session_id: sessionId,
                 duration_seconds: state.studyMinutes * 60,
                 paused_seconds: state.pausedSeconds || 0,
             });
-            setMessage("");
+            if (data.task) {
+                window.dispatchEvent(new CustomEvent("cocon:task-progress", { detail: data.task }));
+                setMessage(
+                    data.task.completed
+                        ? `${data.task.title} completed automatically.`
+                        : `${data.task.focused_minutes} / ${data.task.target_minutes} minutes completed for ${data.task.title}.`,
+                );
+                if (data.task.completed && Number(state.taskId) === Number(data.task.id)) {
+                    state.taskId = null;
+                    state.taskTitle = "";
+                    saveState();
+                    renderSessionContext();
+                }
+            } else {
+                setMessage("");
+            }
             return true;
         } catch (error) {
             setMessage(error.message);
@@ -252,6 +340,7 @@
         renderTimer();
 
         if (state.phase === "study" && !state.sessionId) createStudySession();
+        if (state.phase === "study" && state.sessionId) syncStudySessionContext();
         resumeSelectedSound();
     }
 
@@ -699,6 +788,8 @@
         if (!learningSidebar) return;
 
         const shouldShow = visible && document.documentElement.classList.contains("low-stimulus");
+        document.documentElement.classList.toggle("low-stimulus-navigation-is-open", shouldShow);
+        lowStimulusNavigationToggle?.setAttribute("aria-expanded", String(shouldShow));
         if (shouldShow) {
             if (sidebarCollapsedBeforeFocus === null) {
                 sidebarCollapsedBeforeFocus = learningSidebar.classList.contains("collapsed");
@@ -723,6 +814,7 @@
         panelToggle.setAttribute("aria-expanded", String(!collapsed));
         panelToggle.setAttribute("aria-label", collapsed ? "Show focus panel" : "Hide focus panel");
         panelToggle.title = collapsed ? "Show focus panel" : "Hide focus panel";
+        lowStimulusFocusToggle?.setAttribute("aria-expanded", String(!collapsed));
         sessionStorage.setItem("studyflow-right-panel-collapsed", String(collapsed));
     }
 
@@ -754,6 +846,18 @@
         setPanelCollapsed(!panel.classList.contains("is-collapsed"));
     });
 
+    lowStimulusNavigationToggle?.addEventListener("click", () => {
+        setLowStimulusNavigationVisible(true);
+    });
+
+    lowStimulusFocusToggle?.addEventListener("click", () => {
+        openFocusPanel();
+    });
+
+    window.addEventListener("cocon:set-low-stimulus-navigation", (event) => {
+        setLowStimulusNavigationVisible(Boolean(event.detail?.visible));
+    });
+
     window.addEventListener("cocon:low-stimulus-change", (event) => {
         if (event.detail?.active) {
             setPanelCollapsed(true);
@@ -764,6 +868,35 @@
 
     document.querySelectorAll("[data-open-focus-panel]").forEach((trigger) => {
         trigger.addEventListener("click", () => openFocusPanel());
+    });
+
+    document.querySelectorAll("[data-start-study-task]").forEach((trigger) => {
+        trigger.addEventListener("click", () => {
+            if (state.running || state.paused) {
+                openFocusPanel();
+                setMessage("Finish or reset the current timer before choosing another study plan.");
+                return;
+            }
+            state.taskId = Number(trigger.dataset.taskId);
+            state.taskTitle = trigger.dataset.taskTitle || "Study plan";
+            saveState();
+            renderTimer();
+            openFocusPanel();
+            setMessage(`Ready to count this session toward ${state.taskTitle}.`);
+        });
+    });
+
+    sessionContext?.addEventListener("click", (event) => {
+        if (!event.target.closest("[data-clear-study-task]")) return;
+        if (state.running || state.paused) {
+            setMessage("Reset the current timer before clearing its study plan.");
+            return;
+        }
+        state.taskId = null;
+        state.taskTitle = "";
+        saveState();
+        renderTimer();
+        setMessage("");
     });
 
     if (new URLSearchParams(window.location.search).get("focus") === "resume") {
@@ -791,7 +924,10 @@
         document.addEventListener("pointerdown", unlockRestoredAudio);
         document.addEventListener("keydown", unlockRestoredAudio);
     }
-    if (state.running && state.phase === "study" && !state.sessionId) createStudySession();
+    if ((state.running || state.paused) && state.phase === "study") {
+        if (state.sessionId) syncStudySessionContext();
+        else if (state.running) createStudySession();
+    }
     if (state.running && state.remaining === 0) completeCurrentPhase();
     window.setInterval(tick, 250);
 })();

@@ -35,24 +35,14 @@ document.addEventListener("DOMContentLoaded", () => {
         accumulatedImages.forEach((file, index) => {
             // Основной контейнер теперь вертикальный, чтобы инпут был снизу
             const item = document.createElement("div");
-            item.style.display = "flex";
-            item.style.flexDirection = "column";
-            item.style.marginBottom = "8px";
-            item.style.background = "#f5f5f5";
-            item.style.padding = "8px";
-            item.style.borderRadius = "4px";
+            item.className = "upload-queue-item upload-queue-image";
 
             // Верхняя строка: картинка, имя и кнопка удаления
             const topRow = document.createElement("div");
-            topRow.style.display = "flex";
-            topRow.style.alignItems = "center";
-            topRow.style.width = "100%";
+            topRow.className = "upload-queue-row";
 
             const img = document.createElement("img");
-            img.style.maxWidth = "50px";
-            img.style.maxHeight = "50px";
-            img.style.marginRight = "10px";
-            img.style.borderRadius = "2px";
+            img.className = "upload-queue-thumbnail";
 
             const reader = new FileReader();
             reader.onload = function (e) {
@@ -62,10 +52,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
             const nameLabel = document.createElement("span");
             nameLabel.textContent = file.name;
-            nameLabel.style.flexGrow = "1";
-            nameLabel.style.fontSize = "0.85em";
-            nameLabel.style.overflow = "hidden";
-            nameLabel.style.textOverflow = "ellipsis";
+            nameLabel.className = "upload-queue-name";
 
             const removeBtn = document.createElement("button");
             removeBtn.type = "button";
@@ -90,6 +77,7 @@ document.addEventListener("DOMContentLoaded", () => {
             // Поле для ввода подписи под конкретной картинкой
             const captionInput = document.createElement("input");
             captionInput.type = "text";
+            captionInput.className = "upload-queue-caption";
             captionInput.name = "new_captions"; // Имя для request.POST.getlist() во views.py
             captionInput.placeholder = "Добавить подпись под этой картинкой...";
             captionInput.value = file.customCaption || ""; // Восстанавливаем текст при перерендере
@@ -133,12 +121,7 @@ document.addEventListener("DOMContentLoaded", () => {
         pdfQueueContainer.innerHTML = "";
         accumulatedPdfs.forEach((file, index) => {
             const item = document.createElement("div");
-            item.style.display = "flex";
-            item.style.alignItems = "center";
-            item.style.marginBottom = "8px";
-            item.style.background = "#f5f5f5";
-            item.style.padding = "6px";
-            item.style.borderRadius = "4px";
+            item.className = "upload-queue-item upload-queue-pdf";
 
             const icon = document.createElement("span");
             icon.textContent = "📄 ";

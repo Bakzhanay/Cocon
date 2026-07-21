@@ -23,6 +23,14 @@ class StudySession(models.Model):
         related_name="study_sessions",
     )
 
+    task = models.ForeignKey(
+        "planner.Task",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="study_sessions",
+    )
+
     section = models.ForeignKey(
         Section,
         on_delete=models.SET_NULL,
@@ -101,3 +109,54 @@ class StudySession(models.Model):
             return f"{self.topic.title} ({self.duration_seconds}s)"
 
         return f"{self.duration_seconds}s"
+
+
+class StudySessionSegment(models.Model):
+    """A portion of a Pomodoro spent in one learning context."""
+
+    session = models.ForeignKey(
+        StudySession,
+        on_delete=models.CASCADE,
+        related_name="segments",
+    )
+
+    topic = models.ForeignKey(
+        Topic,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+    )
+
+    section = models.ForeignKey(
+        Section,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+    )
+
+    subject = models.ForeignKey(
+        Subject,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+    )
+
+    activity_type = models.CharField(
+        max_length=12,
+        choices=StudySession.ACTIVITY_CHOICES,
+        default="general",
+    )
+
+    topic_title = models.CharField(max_length=100, blank=True)
+    section_title = models.CharField(max_length=100, blank=True)
+    subject_title = models.CharField(max_length=100, blank=True)
+    started_offset_seconds = models.PositiveIntegerField(default=0)
+    duration_seconds = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["id"]
+
+    def __str__(self):
+        label = self.subject_title or self.section_title or self.topic_title or "General study"
+        return f"{label} ({self.duration_seconds}s)"

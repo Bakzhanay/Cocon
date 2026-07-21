@@ -1,9 +1,15 @@
-.mode-controls {
+.mode-controls,
+.low-stimulus-panel-controls {
     display: flex;
     gap: 6px;
 }
 
-.mode-controls button {
+.low-stimulus-panel-controls {
+    display: none;
+}
+
+.mode-controls button,
+.low-stimulus-panel-controls button {
     width: 32px;
     height: 32px;
     display: grid;
@@ -17,7 +23,8 @@
 }
 
 .mode-controls button:hover,
-.mode-controls button.is-active {
+.mode-controls button.is-active,
+.low-stimulus-panel-controls button:hover {
     border-color: #9eb1aa;
     background: #e2e9e5;
     color: #4d7066;
@@ -56,6 +63,27 @@ html.dark-mode .right-sidebar {
 
 html.dark-mode .right-sidebar {
     background: #181d1a;
+}
+
+html.dark-mode .upload-queue-item {
+    border-color: var(--border) !important;
+    background: var(--dark-surface-raised) !important;
+    color: var(--text) !important;
+}
+
+html.dark-mode .upload-queue-name,
+html.dark-mode .upload-queue-pdf > span:nth-child(2) {
+    color: var(--text) !important;
+}
+
+html.dark-mode .upload-queue-caption {
+    border-color: #4b5750 !important;
+    background: #171c19 !important;
+    color: var(--text) !important;
+}
+
+html.dark-mode .upload-queue-caption::placeholder {
+    color: #8f9993;
 }
 
 html.dark-mode .brand-icon {
@@ -215,6 +243,12 @@ html.dark-mode textarea::placeholder {
     opacity: 1;
 }
 
+html.dark-mode .form-group textarea.form-control {
+    border-color: #465049;
+    background: #121613 !important;
+    color: #edf1ee;
+}
+
 html.dark-mode .timer-dial-inner {
     background: var(--dark-surface);
 }
@@ -266,6 +300,7 @@ html.dark-mode .toolbar-btn,
 html.dark-mode .flashcard-action-link,
 html.dark-mode .user-area form button,
 html.dark-mode .mode-controls button,
+html.dark-mode .low-stimulus-panel-controls button,
 html.dark-mode .right-sidebar-toggle,
 html.dark-mode .duration-choices button,
 html.dark-mode .timer-secondary,
@@ -284,6 +319,7 @@ html.dark-mode .task-check {
 
 html.dark-mode .mode-controls button:hover,
 html.dark-mode .mode-controls button.is-active,
+html.dark-mode .low-stimulus-panel-controls button:hover,
 html.dark-mode .secondary-btn:hover,
 html.dark-mode .toolbar-btn:hover,
 html.dark-mode .right-sidebar-toggle:hover,
@@ -648,7 +684,7 @@ html.dark-mode .dashboard-widget.is-pinned {
 }
 
 html.dark-mode .dashboard-widget-control {
-    border-color: var(--dark-border);
+    border-color: var(--border);
     background: #252b28;
     color: #bdc5c0;
 }
@@ -682,6 +718,15 @@ html.low-stimulus .right-sidebar {
     display: none;
 }
 
+html.low-stimulus .low-stimulus-panel-controls {
+    display: flex;
+}
+
+html.low-stimulus.low-stimulus-navigation-is-open #lowStimulusNavigationToggle,
+html.low-stimulus.focus-panel-is-open #lowStimulusFocusToggle {
+    display: none;
+}
+
 html.low-stimulus.focus-panel-is-open .right-sidebar {
     position: fixed;
     top: 74px;
@@ -698,7 +743,7 @@ html.low-stimulus.focus-panel-is-open .right-sidebar {
     box-shadow: 0 20px 55px rgba(45, 53, 49, .16);
 }
 
-html.low-stimulus.focus-panel-is-open .sidebar {
+html.low-stimulus.low-stimulus-navigation-is-open .sidebar {
     position: fixed;
     top: 0;
     left: 0;
@@ -783,7 +828,7 @@ html.low-stimulus .dashboard-hero {
 }
 
 @media (max-width: 620px) {
-    html.low-stimulus.focus-panel-is-open .sidebar {
+    html.low-stimulus.low-stimulus-navigation-is-open .sidebar {
         width: min(260px, calc(100vw - 72px));
         min-width: 0;
     }

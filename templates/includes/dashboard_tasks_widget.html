@@ -19,19 +19,89 @@
             </form>
         </div>
     </div>
-    <form action="{% url 'planner:add_task' %}" method="post" class="quick-task-form">
+    <form action="{% url 'planner:add_task' %}" method="post" class="quick-task-form" data-study-task-form>
         {% csrf_token %}
-        <input name="title" maxlength="220" placeholder="What needs to be done?" required>
-        <input name="due_date" type="date" aria-label="Due date">
-        <select name="priority" aria-label="Priority"><option value="normal">Normal</option><option value="high">High</option><option value="low">Low</option></select>
-        <button>Add</button>
+        <div class="task-form-primary">
+            <select name="task_type" aria-label="Task type" data-task-type>
+                <option value="regular">Regular task</option>
+                <option value="study">Study plan</option>
+            </select>
+            <input name="title" maxlength="220" placeholder="What needs to be done?" required data-task-title>
+            <input name="due_date" type="date" aria-label="Due date">
+            <select name="priority" aria-label="Priority"><option value="normal">Normal</option><option value="high">High</option><option value="low">Low</option></select>
+            <button type="submit" data-task-submit>Add</button>
+        </div>
+
+        <div class="study-task-fields" data-study-task-fields hidden>
+            <div class="study-context-picker">
+                <span class="study-field-label">Study item</span>
+                <input type="search"
+                       class="study-context-search"
+                       placeholder="Search topics, sections or subjects..."
+                       aria-label="Search study items"
+                       autocomplete="off"
+                       disabled
+                       data-study-context-search>
+                <select name="study_context" aria-label="Study item" disabled data-study-context>
+                    <option value="">Choose what to study</option>
+                    <option value="general">General study</option>
+                    {% for topic in task_topics %}
+                    <option value="topic:{{ topic.id }}">Topic &middot; {{ topic.title }}</option>
+                        {% for section in topic.sections.all %}
+                        <option value="section:{{ section.id }}">Section &middot; {{ topic.title }} / {{ section.title }}</option>
+                            {% for subject in section.subjects.all %}
+                            <option value="subject:{{ subject.id }}">Subject &middot; {{ topic.title }} / {{ section.title }} / {{ subject.title }}</option>
+                            {% endfor %}
+                        {% endfor %}
+                    {% endfor %}
+                </select>
+                <small class="study-context-results" aria-live="polite" data-study-context-results></small>
+            </div>
+            <label>
+                <span>Planned time</span>
+                <input name="target_minutes" type="number" min="5" max="1440" step="5" placeholder="Minutes" disabled data-task-minutes>
+            </label>
+            <label>
+                <span>Count activity</span>
+                <select name="activity_type" disabled data-task-activity>
+                    <option value="any">Any study activity</option>
+                    <option value="general">General study</option>
+                    <option value="notes">Notes</option>
+                    <option value="flashcards">Flashcards</option>
+                    <option value="reading">Reading</option>
+                </select>
+            </label>
+            <p>Completed Pomodoro time for this item will fill the plan automatically.</p>
+        </div>
     </form>
     {% if tasks %}
         <div class="task-list">
             {% for task in tasks %}
-                <div class="task-row {% if task.completed %}is-completed{% endif %} {% if task.due_date and task.due_date < today and not task.completed %}is-overdue{% endif %}">
+                <div class="task-row {% if task.completed %}is-completed{% endif %} {% if task.due_date and task.due_date < today and not task.completed %}is-overdue{% endif %}" data-task-row="{{ task.id }}">
                     <form method="post" action="{% url 'planner:toggle_task' task.id %}">{% csrf_token %}<button class="task-check" aria-label="Toggle task">{% if task.completed %}&#10003;{% endif %}</button></form>
-                    <div><strong>{{ task.title }}</strong><span>{% if task.due_date %}{{ task.due_date|date:"M j" }}{% else %}No date{% endif %} &middot; {{ task.get_priority_display }}</span></div>
+                    <div class="task-details">
+                        {% if task.is_study_task %}<span class="task-study-badge">Study plan</span>{% endif %}
+                        <strong>{{ task.title }}</strong>
+                        <span>{% if task.is_study_task %}{{ task.study_context_label }} &middot; {% endif %}{% if task.due_date %}{{ task.due_date|date:"M j" }}{% else %}No date{% endif %} &middot; {{ task.get_priority_display }}</span>
+                        {% if task.is_study_task %}
+                        <div class="task-focus-progress" data-task-progress>
+                            <div><i style="width:{{ task.progress_percent }}%" data-task-progress-bar></i></div>
+                            <span data-task-progress-label>{{ task.focused_minutes }} / {{ task.target_minutes }} min</span>
+                        </div>
+                        <div class="task-study-actions">
+                            <small data-task-completion-label>{% if task.completed_by_focus %}Completed automatically{% elif task.completed %}Completed manually{% elif task.remaining_minutes %}{{ task.remaining_minutes }} min remaining{% endif %}</small>
+                            {% if not task.completed %}
+                            <button type="button"
+                                    class="task-start-focus"
+                                    data-start-study-task
+                                    data-task-id="{{ task.id }}"
+                                    data-task-title="{{ task.title }}">
+                                Start focus
+                            </button>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                    </div>
                     <form method="post" action="{% url 'planner:delete_task' task.id %}">{% csrf_token %}<button class="task-delete" aria-label="Delete task">&times;</button></form>
                 </div>
             {% endfor %}

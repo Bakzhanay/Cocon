@@ -78,6 +78,36 @@ urlpatterns = [
     ),
 
     path(
+        "sections/<int:section_id>/subjects/bulk-add/",
+        views.bulk_add_subjects,
+        name="bulk_add_subjects",
+    ),
+
+    path(
+        "sections/<int:section_id>/subjects/bulk-delete/",
+        views.bulk_delete_subjects,
+        name="bulk_delete_subjects",
+    ),
+
+    path(
+        "sections/<int:section_id>/subjects/undo/",
+        views.undo_subject_action,
+        name="undo_subject_action",
+    ),
+
+    path(
+        "sections/<int:section_id>/subjects/redo/",
+        views.redo_subject_action,
+        name="redo_subject_action",
+    ),
+
+    path(
+        "sections/<int:section_id>/subjects/subtitle-history/clear/",
+        views.clear_subject_subtitle_history,
+        name="clear_subject_subtitle_history",
+    ),
+
+    path(
         "subjects/<int:subject_id>/overview/",
         views.subject_overview,
         name="subject_overview",

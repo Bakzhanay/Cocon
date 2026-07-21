@@ -19,6 +19,18 @@ connects them to one learning hierarchy:
 
 `Topic → Section → Subject → Notes / Flashcards`
 
+## Why Cocon
+
+Cocon was built for learners whose focus is not the problem—the difficult part
+is noticing when that focus has stayed on one area for too long while another
+goal quietly falls behind. A Pomodoro timer can count minutes, but it does not
+usually remember what those minutes were for.
+
+Cocon turns every completed focus session into structured evidence. Time spent
+on Cell Biology flashcards also contributes to Cell Biology, Biology, and IMAT,
+so the dashboard can show both progress and imbalance without tracking passive
+time spent with the website open.
+
 ## Product tour
 
 ![Animated tour of the Cocon dashboard, learning rhythm, and focus tools](docs/images/cocon-demo.gif)
@@ -29,6 +41,8 @@ database or uploaded learning files are included in the repository.
 ## What it can do
 
 - Organize topics, sections, and subjects, including pinned topics and progress.
+- Add an entire subject outline at once with an editable preview, saved
+  subtitles, card colors, duplicate protection, bulk deletion, and undo/redo.
 - Create rich notes with images and PDF attachments, plus pinned and quick notes.
 - Build flashcard decks with images, mastery state, and spaced-review scheduling.
 - Run a persistent Pomodoro timer with configurable study and break durations.
@@ -38,9 +52,28 @@ database or uploaded learning files are included in the repository.
   with weekly pace warnings for goals that are starting to fall behind.
 - Show focus balance, streaks, goals, review backlog, recent activity, and a
   calendar of completed sessions.
-- Plan tasks with due dates and priorities.
+- Create regular tasks or searchable study plans linked to a topic, section, or
+  subject. Completed matching Pomodoro sessions update the plan automatically.
 - Play looping browser-generated soundscapes without external audio files.
 - Switch between light, dark, and low-stimulation interfaces.
+
+## Built with GPT-5.6 in Codex
+
+Cocon was not created from one prompt. Its first version grew feature by feature
+with ChatGPT while I learned Django, and I used Gemini as an independent reviewer
+to challenge decisions and reveal gaps. During OpenAI Build Week, I used
+GPT-5.6 through OpenAI Codex as a codebase-wide engineering collaborator that
+helped turn those experiments into a coherent application.
+
+GPT-5.6 in Codex helped translate real usage feedback into scoped product changes,
+refactor connected flows, design hierarchical focus tracking and automatic plan
+progress, add safe migrations and regression tests, and verify complete user
+journeys in the browser. I remained responsible for the product idea,
+priorities, visual direction, and continuous real-world feedback.
+
+The current repository includes 66 automated tests alongside GitHub Actions,
+fresh-database migration checks, ownership validation, and protections that keep
+local study data and uploaded files out of the public repository.
 
 ## Tech stack
 

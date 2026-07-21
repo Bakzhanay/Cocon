@@ -30,6 +30,10 @@ staticfiles/
 htmlcov/
 .coverage
 
+# Local Build Week submission and media workspace
+docs/build-week-*
+scripts/
+
 # Local agent/tool metadata
 .agents/
 .codex/

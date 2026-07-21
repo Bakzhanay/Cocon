@@ -1,7 +1,7 @@
 <article class="study-flashcard {% if card.learned %}is-learned{% endif %}">
     <div class="flashcard-card-top">
         <div class="flashcard-state">
-            {% if card.learned %}<span class="state-dot"></span> Scheduled{% else %}<span class="state-dot"></span> Learning{% endif %}
+            {% if card.learned %}<span class="state-dot"></span> Mastered{% else %}<span class="state-dot"></span> Learning{% endif %}
         </div>
         <a href="{% url 'flashcards:toggle_flashcard' card.id %}{% if due_review_page %}?return_to=due{% endif %}" class="flashcard-check" aria-label="{% if card.learned %}Mark as learning{% else %}Mark as mastered{% endif %}" title="{% if card.learned %}Mark as learning{% else %}Mark as mastered{% endif %}">
             {% if card.learned %}&#10003;{% else %}<span></span>{% endif %}

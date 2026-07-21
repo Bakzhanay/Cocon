@@ -7,10 +7,11 @@ from django.urls import reverse
 from django.utils import timezone
 
 from flashcards.models import Flashcard
+from notes.models import Note
 from study.models import StudySession
 from users.models import UserPreferences
 
-from .models import Section, Subject, Topic
+from .models import Section, Subject, SubjectSubtitlePreset, Topic
 
 
 class DashboardAndSearchTests(TestCase):
@@ -75,11 +76,11 @@ class DashboardAndSearchTests(TestCase):
         self.assertEqual(response.context["due_flashcards"], 1)
         self.assertContains(response, "Cells")
         self.assertContains(response, "Biology 25m")
-        self.assertContains(response, "Open subject")
+        self.assertContains(response, "Start studying")
         self.assertContains(
             response,
             reverse("topics:subject_overview", args=[self.subject.id]) + "?focus=resume",
-            count=2,
+            count=1,
         )
         self.assertContains(response, reverse("flashcards:due_flashcards"))
 
@@ -98,7 +99,7 @@ class DashboardAndSearchTests(TestCase):
         response = self.client.get(reverse("topics:home"))
 
         self.assertContains(response, "Unassigned focus")
-        self.assertContains(response, "Start another session")
+        self.assertContains(response, "Start studying")
         self.assertContains(response, "data-open-focus-panel")
 
     def test_new_user_is_invited_to_start_their_first_study_session(self):
@@ -702,3 +703,284 @@ class FocusAnalyticsTests(TestCase):
         self.assertContains(response, "No topics added yet")
         self.assertContains(response, "Create your first topic")
         self.assertContains(response, reverse("topics:add_topic"))
+
+
+class BulkSubjectCreationTests(TestCase):
+    def setUp(self):
+        self.user = get_user_model().objects.create_user(
+            username="bulk-learner",
+            password="test-pass-123",
+        )
+        self.topic = Topic.objects.create(user=self.user, title="IMAT")
+        self.section = Section.objects.create(
+            topic=self.topic,
+            title="Logical reasoning",
+        )
+        self.client.force_login(self.user)
+
+    def test_bulk_page_is_available_from_section(self):
+        section_page = self.client.get(
+            reverse("topics:section_detail", args=[self.section.id])
+        )
+        bulk_url = reverse("topics:bulk_add_subjects", args=[self.section.id])
+
+        self.assertContains(section_page, bulk_url)
+        response = self.client.get(bulk_url)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Bulk add subjects")
+        self.assertContains(response, "Paste only the subject names")
+        self.assertContains(response, "Common subtitle")
+        self.assertContains(response, "Check the cards before adding")
+
+    def test_bulk_add_parses_groups_inline_subtitles_and_preserves_order(self):
+        response = self.client.post(
+            reverse("topics:bulk_add_subjects", args=[self.section.id]),
+            {
+                "source_entries": (
+                    "Critical Thinking:\n"
+                    "- Assessing the impact of additional evidence\n"
+                    "- Detecting reasoning errors\n\n"
+                    "**Problem Solving**\n"
+                    "• Interpreting data in a table or graph\n"
+                    "Custom practice | Mixed review"
+                ),
+                "color": "sky",
+                "weekly_goal_minutes": 90,
+                "priority": "high",
+            },
+            follow=True,
+        )
+
+        self.assertContains(response, "Added 4 subject(s).")
+        subjects = list(self.section.subjects.order_by("created_at", "id"))
+        self.assertEqual(
+            [subject.title for subject in subjects],
+            [
+                "Assessing the impact of additional evidence",
+                "Detecting reasoning errors",
+                "Interpreting data in a table or graph",
+                "Custom practice",
+            ],
+        )
+        self.assertEqual(
+            [subject.description for subject in subjects],
+            [
+                "Critical Thinking",
+                "Critical Thinking",
+                "Problem Solving",
+                "Mixed review",
+            ],
+        )
+        self.assertTrue(all(subject.color == "sky" for subject in subjects))
+        self.assertTrue(all(subject.weekly_goal_minutes == 90 for subject in subjects))
+        self.assertTrue(all(subject.priority == "high" for subject in subjects))
+        self.assertEqual(
+            set(self.section.subtitle_presets.values_list("value", flat=True)),
+            {"Critical Thinking", "Problem Solving", "Mixed review"},
+        )
+
+    def test_plain_heading_before_bullets_becomes_a_subtitle(self):
+        self.client.post(
+            reverse("topics:bulk_add_subjects", args=[self.section.id]),
+            {
+                "source_entries": "Problem Solving\n○ Working out financial problems\n○ Using spatial reasoning",
+                "color": "default",
+                "weekly_goal_minutes": 120,
+                "priority": "normal",
+            },
+        )
+
+        self.assertEqual(self.section.subjects.count(), 2)
+        self.assertFalse(
+            self.section.subjects.filter(title="Problem Solving").exists()
+        )
+        self.assertEqual(
+            set(self.section.subjects.values_list("description", flat=True)),
+            {"Problem Solving"},
+        )
+
+    def test_bulk_add_skips_existing_and_repeated_names_case_insensitively(self):
+        Subject.objects.create(section=self.section, title="Cells")
+
+        response = self.client.post(
+            reverse("topics:bulk_add_subjects", args=[self.section.id]),
+            {
+                "source_entries": "cells\nCELLS\nNew subject",
+                "color": "default",
+                "weekly_goal_minutes": 120,
+                "priority": "normal",
+            },
+            follow=True,
+        )
+
+        self.assertContains(response, "Added 1 subject(s). Skipped 2 duplicate(s).")
+        self.assertEqual(self.section.subjects.count(), 2)
+        self.assertTrue(
+            self.section.subjects.filter(title="New subject").exists()
+        )
+
+    def test_saved_subtitle_is_suggested_and_can_be_cleared(self):
+        add_url = reverse("topics:add_subject", args=[self.section.id])
+        self.client.post(
+            add_url,
+            {
+                "title": "Matching arguments",
+                "description": "Critical Thinking",
+                "color": "sage",
+                "weekly_goal_minutes": 120,
+                "priority": "normal",
+            },
+        )
+
+        self.assertTrue(
+            SubjectSubtitlePreset.objects.filter(
+                section=self.section,
+                value="Critical Thinking",
+            ).exists()
+        )
+        form_page = self.client.get(add_url)
+        self.assertContains(form_page, 'list="subjectSubtitleHistory"')
+        self.assertContains(form_page, '<option value="Critical Thinking">')
+        self.assertContains(form_page, "Clear saved subtitles")
+
+        response = self.client.post(
+            reverse(
+                "topics:clear_subject_subtitle_history",
+                args=[self.section.id],
+            ),
+            {"next": add_url},
+        )
+
+        self.assertRedirects(response, add_url)
+        self.assertFalse(self.section.subtitle_presets.exists())
+        self.assertEqual(
+            self.section.subjects.get(title="Matching arguments").description,
+            "Critical Thinking",
+        )
+
+    def test_preview_payload_supports_common_and_individual_subtitles(self):
+        self.client.post(
+            reverse("topics:bulk_add_subjects", args=[self.section.id]),
+            {
+                "source_entries": "1. Photosynthesis\n2. Plant cells\n3. Food chains",
+                "entries": (
+                    "Photosynthesis\n"
+                    "Plant cells | Cell structures\n"
+                    "Food chains"
+                ),
+                "preview_ready": "1",
+                "common_subtitle": "Biology basics",
+                "color": "mint",
+                "weekly_goal_minutes": 75,
+                "priority": "normal",
+            },
+        )
+
+        subjects = list(self.section.subjects.order_by("created_at", "id"))
+        self.assertEqual(
+            [subject.title for subject in subjects],
+            ["Photosynthesis", "Plant cells", "Food chains"],
+        )
+        self.assertEqual(
+            [subject.description for subject in subjects],
+            ["Biology basics", "Cell structures", "Biology basics"],
+        )
+
+    def test_bulk_delete_can_be_undone_and_redone_without_losing_content(self):
+        first = Subject.objects.create(section=self.section, title="First")
+        second = Subject.objects.create(section=self.section, title="Second")
+        third = Subject.objects.create(section=self.section, title="Keep")
+        note = Note.objects.create(
+            owner=self.user,
+            subject=first,
+            title="Saved note",
+            content="Important content",
+        )
+        flashcard = Flashcard.objects.create(
+            subject=first,
+            question="Question",
+            answer="Answer",
+        )
+
+        response = self.client.post(
+            reverse("topics:bulk_delete_subjects", args=[self.section.id]),
+            {"subject_ids": [first.id, second.id]},
+        )
+        self.assertRedirects(
+            response,
+            reverse("topics:section_detail", args=[self.section.id]),
+        )
+        self.assertEqual(list(self.section.subjects.values_list("id", flat=True)), [third.id])
+        self.assertTrue(Subject.all_objects.filter(id=first.id, is_deleted=True).exists())
+        self.assertTrue(Note.objects.filter(id=note.id).exists())
+        self.assertTrue(Flashcard.objects.filter(id=flashcard.id).exists())
+
+        self.client.post(reverse("topics:undo_subject_action", args=[self.section.id]))
+        self.assertEqual(self.section.subjects.count(), 3)
+        self.assertFalse(Subject.all_objects.get(id=first.id).is_deleted)
+
+        self.client.post(reverse("topics:redo_subject_action", args=[self.section.id]))
+        self.assertEqual(list(self.section.subjects.values_list("id", flat=True)), [third.id])
+
+    def test_undo_bulk_add_and_new_action_clears_redo(self):
+        add_url = reverse("topics:bulk_add_subjects", args=[self.section.id])
+        self.client.post(
+            add_url,
+            {
+                "source_entries": "One\nTwo",
+                "entries": "One\nTwo",
+                "common_subtitle": "",
+                "color": "default",
+                "weekly_goal_minutes": 120,
+                "priority": "normal",
+            },
+        )
+        self.assertEqual(self.section.subjects.count(), 2)
+
+        self.client.post(reverse("topics:undo_subject_action", args=[self.section.id]))
+        self.assertEqual(self.section.subjects.count(), 0)
+
+        self.client.post(
+            reverse("topics:add_subject", args=[self.section.id]),
+            {
+                "title": "Replacement",
+                "description": "",
+                "color": "default",
+                "weekly_goal_minutes": 120,
+                "priority": "normal",
+            },
+        )
+        section_page = self.client.get(
+            reverse("topics:section_detail", args=[self.section.id])
+        )
+        self.assertFalse(section_page.context["can_redo_subject_action"])
+        self.assertEqual(
+            list(self.section.subjects.values_list("title", flat=True)),
+            ["Replacement"],
+        )
+
+    def test_section_page_has_selection_and_history_controls(self):
+        Subject.objects.create(section=self.section, title="Selectable")
+        response = self.client.get(
+            reverse("topics:section_detail", args=[self.section.id])
+        )
+
+        self.assertContains(response, "Select cards")
+        self.assertContains(response, "Delete selected")
+        self.assertContains(response, "Undo")
+        self.assertContains(response, "Redo")
+        self.assertContains(response, "subject_bulk_actions.js")
+
+    def test_bulk_add_rejects_another_users_section(self):
+        other_user = get_user_model().objects.create_user(
+            username="other-bulk-user",
+            password="test-pass-123",
+        )
+        other_topic = Topic.objects.create(user=other_user, title="Private")
+        other_section = Section.objects.create(topic=other_topic, title="Private section")
+
+        response = self.client.get(
+            reverse("topics:bulk_add_subjects", args=[other_section.id])
+        )
+
+        self.assertEqual(response.status_code, 404)

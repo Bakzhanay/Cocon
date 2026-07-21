@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+
+<div class="form-page bulk-subject-page">
+    <div class="form-card bulk-subject-card">
+        <div class="bulk-subject-heading">
+            <div>
+                <span class="form-eyebrow">Create several cards at once</span>
+                <h1>Bulk add subjects</h1>
+                <p class="form-subtitle">{{ section.topic.title }} / <strong>{{ section.title }}</strong></p>
+            </div>
+            <a href="{% url 'topics:add_subject' section.id %}" class="secondary-btn">Add one instead</a>
+        </div>
+
+        <div class="bulk-simple-guide">
+            <span class="bulk-step-number">1</span>
+            <div>
+                <strong>Paste only the subject names, one per line</strong>
+                <p>No headings or special formatting are required. Bullets and numbers such as <code>-</code> or <code>1.</code> are removed automatically.</p>
+                <pre>Photosynthesis
+Plant cells
+Food chains</pre>
+            </div>
+        </div>
+
+        <form method="post" id="bulkSubjectForm">
+            {% csrf_token %}
+            {{ form.entries }}
+            {{ form.preview_ready }}
+
+            {% if form.non_field_errors %}
+            <div class="form-errors">{{ form.non_field_errors }}</div>
+            {% endif %}
+
+            <div class="bulk-entry-grid">
+                <div class="form-group">
+                    <label for="{{ form.source_entries.id_for_label }}">Paste subject names</label>
+                    {{ form.source_entries }}
+                    <small class="form-hint">Blank lines are ignored. You can add up to 200 cards.</small>
+                    {{ form.source_entries.errors }}
+                </div>
+
+                <div class="bulk-common-subtitle">
+                    <div class="form-group">
+                        <label for="{{ form.common_subtitle.id_for_label }}">Common subtitle <span>Optional</span></label>
+                        {{ form.common_subtitle }}
+                        <datalist id="subjectSubtitleHistory">
+                            {% for subtitle in subtitle_history %}<option value="{{ subtitle }}"></option>{% endfor %}
+                        </datalist>
+                        <small class="form-hint">Applied to every subject unless you set a different subtitle in the preview.</small>
+                        {{ form.common_subtitle.errors }}
+                    </div>
+
+                    {% if subtitle_history %}
+                    <div class="saved-subtitle-summary bulk-saved-subtitles">
+                        <span>Recently used</span>
+                        <div>
+                            {% for subtitle in subtitle_history %}
+                            <button type="button" data-common-subtitle="{{ subtitle }}">{{ subtitle }}</button>
+                            {% endfor %}
+                            <button type="submit"
+                                    form="clearBulkSubtitleHistoryForm"
+                                    class="subtitle-history-clear">
+                                Clear history
+                            </button>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <section class="bulk-preview-panel" id="bulkSubjectPreview" aria-live="polite">
+                <div class="bulk-preview-heading">
+                    <div>
+                        <span class="bulk-step-number">2</span>
+                        <div>
+                            <strong>Check the cards before adding</strong>
+                            <p>Edit a name, remove an unnecessary line, or add a separate subtitle below any subject.</p>
+                        </div>
+                    </div>
+                    <span id="bulkSubjectCount">0 subjects</span>
+                </div>
+                <div class="bulk-preview-empty" id="bulkPreviewEmpty">
+                    Paste your list above to see the numbered cards here.
+                </div>
+                <div class="bulk-preview-list" id="bulkPreviewList"></div>
+            </section>
+
+            <noscript>
+                <div class="page-message">Preview requires JavaScript, but the pasted list can still be added.</div>
+            </noscript>
+
+            <fieldset class="form-group card-color-fieldset">
+                <legend>Card color for this batch</legend>
+                <div class="card-color-options">
+                    {% for choice in form.color %}
+                    <label class="card-color-option">
+                        {{ choice.tag }}
+                        <span class="card-color-swatch subject-color-{{ choice.data.value }}" aria-hidden="true"></span>
+                        <span>{{ choice.choice_label }}</span>
+                    </label>
+                    {% endfor %}
+                </div>
+                {{ form.color.errors }}
+            </fieldset>
+
+            <div class="bulk-shared-settings">
+                <div class="form-group">
+                    <label for="{{ form.weekly_goal_minutes.id_for_label }}">Weekly goal (minutes)</label>
+                    {{ form.weekly_goal_minutes }}
+                    {{ form.weekly_goal_minutes.errors }}
+                </div>
+
+                <div class="form-group">
+                    <label for="{{ form.priority.id_for_label }}">Priority</label>
+                    {{ form.priority }}
+                    {{ form.priority.errors }}
+                </div>
+            </div>
+
+            <small class="form-hint">Color, goal, and priority apply to every card in this batch. Individual subtitles are preserved.</small>
+
+            <div class="form-actions">
+                <button type="submit" class="primary-btn">Add subjects</button>
+                <a href="{% url 'topics:section_detail' section.id %}" class="secondary-btn">Cancel</a>
+            </div>
+        </form>
+
+        {% if subtitle_history %}
+        <form method="post"
+              action="{% url 'topics:clear_subject_subtitle_history' section.id %}"
+              id="clearBulkSubtitleHistoryForm">
+            {% csrf_token %}
+            <input type="hidden" name="next" value="{% url 'topics:bulk_add_subjects' section.id %}">
+        </form>
+        {% endif %}
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{% static 'js/bulk_subject_editor.js' %}?v=2"></script>
+{% endblock %}
