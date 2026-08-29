@@ -2,7 +2,7 @@ from django import forms
 
 from topics.models import Section, Subject, Topic
 
-from .models import Task
+from .models import Milestone, Task
 
 
 class TaskForm(forms.ModelForm):
@@ -133,3 +133,52 @@ class TaskForm(forms.ModelForm):
         if commit:
             instance.save()
         return instance
+
+
+class MilestoneForm(forms.ModelForm):
+    class Meta:
+        model = Milestone
+        fields = ("kind", "title", "description", "target_at", "priority")
+        widgets = {
+            "title": forms.TextInput(
+                attrs={"placeholder": "Give this plan a clear title"}
+            ),
+            "description": forms.Textarea(
+                attrs={
+                    "placeholder": "Add details, steps, links, or anything you do not want to forget...",
+                    "rows": 6,
+                }
+            ),
+            "target_at": forms.DateTimeInput(
+                attrs={"type": "datetime-local"},
+                format="%Y-%m-%dT%H:%M",
+            ),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["target_at"].input_formats = [
+            "%Y-%m-%dT%H:%M",
+            "%Y-%m-%dT%H:%M:%S",
+        ]
+
+    def clean_title(self):
+        title = self.cleaned_data["title"].strip()
+        if not title:
+            raise forms.ValidationError("Write the plan or deadline.")
+        return title
+
+    def clean_description(self):
+        return self.cleaned_data.get("description", "").strip()
+
+    def clean(self):
+        cleaned_data = super().clean()
+        if (
+            cleaned_data.get("kind") == "deadline"
+            and not cleaned_data.get("target_at")
+        ):
+            self.add_error(
+                "target_at",
+                "Choose the date and time for a deadline.",
+            )
+        return cleaned_data

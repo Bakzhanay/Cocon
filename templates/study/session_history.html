@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% load tz %}
+
+{% block title %}Focus history · Cocon{% endblock %}
+
+{% block content %}
+<div class="session-history-page">
+    <nav class="learning-breadcrumbs" aria-label="Learning path">
+        <ol>
+            <li><a href="{% url 'topics:home' %}" class="learning-breadcrumb-link">Dashboard</a></li>
+            <li><span class="learning-breadcrumb-current" aria-current="page">Focus history</span></li>
+        </ol>
+    </nav>
+
+    <header class="history-page-hero">
+        <div>
+            <span class="dashboard-eyebrow">Your focused time stays yours</span>
+            <h1>Focus history</h1>
+            <p>Every completed timer session and manual entry remains here, even after you clear the dashboard preview.</p>
+        </div>
+        <div class="history-total-card">
+            <strong>{{ session_total }}</strong>
+            <span>saved session{{ session_total|pluralize }}</span>
+        </div>
+    </header>
+
+    <section class="history-list-panel" aria-label="Saved focus sessions">
+        {% if session_page %}
+        <div class="session-history-list">
+            {% for session in session_page %}
+            <article class="session-history-row">
+                <span class="session-history-mark" aria-hidden="true"></span>
+                <div class="session-history-copy">
+                    <div class="session-history-title-row">
+                        <h2>{{ session.context_label }}</h2>
+                        <strong>{{ session.duration_minutes }} min</strong>
+                    </div>
+                    <div class="session-history-meta">
+                        <span>{{ session.get_activity_type_display }}</span>
+                        <span>{% if session.entry_source == "manual" %}Manually logged{% else %}Pomodoro timer{% endif %}</span>
+                        {% timezone user_timezone_name %}
+                        <time datetime="{{ session.ended_at|date:'c' }}">{{ session.ended_at|date:"M j, Y · H:i" }}</time>
+                        {% endtimezone %}
+                    </div>
+                </div>
+            </article>
+            {% endfor %}
+        </div>
+
+        {% if session_page.paginator.num_pages > 1 %}
+        <nav class="history-pagination" aria-label="Focus history pages">
+            {% if session_page.has_previous %}<a href="?page={{ session_page.previous_page_number }}">&larr; Newer</a>{% else %}<span></span>{% endif %}
+            <span>Page {{ session_page.number }} of {{ session_page.paginator.num_pages }}</span>
+            {% if session_page.has_next %}<a href="?page={{ session_page.next_page_number }}">Older &rarr;</a>{% else %}<span></span>{% endif %}
+        </nav>
+        {% endif %}
+        {% else %}
+        <div class="dashboard-empty history-empty">
+            <p>Your completed focus sessions will appear here.</p>
+            <a class="primary-soft-link" href="{% url 'topics:home' %}">Return to dashboard</a>
+        </div>
+        {% endif %}
+    </section>
+
+    <p class="history-privacy-note">Clearing “Recent focus activity” only resets the dashboard preview. It never deletes these records or changes your analytics.</p>
+</div>
+{% endblock %}

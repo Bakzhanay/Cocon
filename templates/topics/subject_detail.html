@@ -4,9 +4,13 @@
 
 <div class="topic-page">
 
-    <a href="{% url 'topics:section_detail' subject.section.id %}" class="back-link">
+    {% include "includes/learning_breadcrumbs.html" with topic=subject.section.topic section=subject.section subject=subject current_label="Notes" %}
+
+    {% comment %}
+    <a href="{% url 'topics:section_detail' subject.section.id %}" class="back-link" hidden>
         ← Back
     </a>
+    {% endcomment %}
 
 <div class="topic-page-header">
     <div>
@@ -35,7 +39,8 @@
 
 {% if notes %}
     {% for note in notes %}
-        <div class="note-card">
+        <div class="note-card"
+             data-scroll-anchor="note-{{ note.id }}">
             <div class="note-card-body">
                 <div class="note-header">
                     <h3>{{ note.title }}</h3>

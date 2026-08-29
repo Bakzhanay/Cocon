@@ -102,6 +102,7 @@ html.dark-mode .dashboard-panel,
 html.dark-mode .metric-card,
 html.dark-mode .focus-card,
 html.dark-mode .study-flashcard,
+html.dark-mode .bulk-flashcard-preview-item,
 html.dark-mode .search-result-card,
 html.dark-mode .subject-card,
 html.dark-mode .section-card,
@@ -138,6 +139,8 @@ html.dark-mode .quick-note-list article,
 html.dark-mode .pinned-note-list a,
 html.dark-mode .study-flashcard .flashcard-answer,
 html.dark-mode .flashcard-progress-card,
+html.dark-mode .bulk-flashcard-preview,
+html.dark-mode .bulk-flashcard-guide,
 html.dark-mode .delete-preview,
 html.dark-mode .upload-preview,
 html.dark-mode .slider-container,
@@ -176,6 +179,7 @@ html.dark-mode .subject-focus-row > span,
 html.dark-mode .recent-note-list small,
 html.dark-mode .dashboard-empty,
 html.dark-mode .task-row span,
+html.dark-mode .milestone-target,
 html.dark-mode .quick-note-list span,
 html.dark-mode .pinned-note-list p,
 html.dark-mode .activity-row small,
@@ -213,9 +217,11 @@ html.dark-mode .attention-list strong,
 html.dark-mode .recent-note-list strong,
 html.dark-mode .activity-row strong,
 html.dark-mode .task-row strong,
+html.dark-mode .milestone-details strong,
 html.dark-mode .pinned-note-list strong,
 html.dark-mode .flashcard-progress-card strong,
 html.dark-mode .study-flashcard .flashcard-question h3,
+html.dark-mode .bulk-flashcard-preview-item > header strong,
 html.dark-mode .study-flashcard .flashcard-answer > p,
 html.dark-mode .search-result-card strong,
 html.dark-mode .search-empty strong,
@@ -249,6 +255,25 @@ html.dark-mode .form-group textarea.form-control {
     color: #edf1ee;
 }
 
+html.dark-mode .bulk-flashcard-field textarea,
+html.dark-mode .bulk-flashcard-source {
+    border-color: #465049;
+    background: #121613 !important;
+    color: #edf1ee;
+}
+
+html.dark-mode .bulk-flashcard-field span,
+html.dark-mode .bulk-flashcard-guide p,
+html.dark-mode .bulk-flashcard-preview p {
+    color: var(--dark-muted);
+}
+
+html.dark-mode .bulk-flashcard-guide pre {
+    border: 1px solid var(--border);
+    background: #101512;
+    color: #edf1ee;
+}
+
 html.dark-mode .timer-dial-inner {
     background: var(--dark-surface);
 }
@@ -265,10 +290,57 @@ html.dark-mode .flashcard-progress-track {
     background: #39413c;
 }
 
+html.dark-mode .rhythm-periods {
+    border-color: var(--border);
+    background: var(--dark-surface-soft);
+}
+
+html.dark-mode .rhythm-periods a {
+    color: var(--dark-muted);
+}
+
+html.dark-mode .rhythm-periods a:hover {
+    color: var(--dark-heading);
+}
+
+html.dark-mode .rhythm-periods a.is-active {
+    background: #789b90;
+    color: #fff;
+}
+
+html.dark-mode .rhythm-breakdown-popover {
+    border-color: var(--border);
+    background: #242c27;
+    color: var(--text);
+    box-shadow: 0 16px 38px rgba(0, 0, 0, .4);
+}
+
+html.dark-mode .rhythm-breakdown-header {
+    border-color: var(--border);
+}
+
+html.dark-mode .rhythm-breakdown-header strong,
+html.dark-mode .rhythm-breakdown-area > div strong {
+    color: var(--dark-heading);
+}
+
+html.dark-mode .rhythm-breakdown-header span,
+html.dark-mode .rhythm-breakdown-area > div span {
+    color: #9fc2b7;
+}
+
+html.dark-mode .rhythm-breakdown-area p,
+html.dark-mode .rhythm-breakdown-empty,
+html.dark-mode .rhythm-breakdown-tip,
+html.dark-mode .rhythm-interaction-hint {
+    color: var(--dark-muted);
+}
+
 html.dark-mode .subject-focus-row,
 html.dark-mode .attention-list a,
 html.dark-mode .recent-note-list a,
 html.dark-mode .task-row,
+html.dark-mode .milestone-row,
 html.dark-mode .activity-row,
 html.dark-mode .note-content,
 html.dark-mode .note-footer,
@@ -349,6 +421,7 @@ html.dark-mode .toolbar-btn.primary,
 html.dark-mode .primary-btn,
 html.dark-mode .dashboard-action,
 html.dark-mode .quick-task-form button,
+html.dark-mode .milestone-form > button,
 html.dark-mode .quick-note-form > button,
 html.dark-mode .add-topic,
 html.dark-mode .flashcard-empty a {
@@ -436,8 +509,24 @@ html.dark-mode .task-row.is-completed strong {
 }
 
 html.dark-mode .task-row.is-overdue span,
+html.dark-mode .milestone-row.is-date-passed .milestone-target,
 html.dark-mode .timer-message {
     color: #e3a697;
+}
+
+html.dark-mode .milestone-kind-plan {
+    background: #2f443d;
+    color: #add0c5;
+}
+
+html.dark-mode .milestone-kind-deadline {
+    background: #443b2b;
+    color: #e4c68f;
+}
+
+html.dark-mode .milestone-date-passed {
+    background: #472f2a;
+    color: #f0b4a7;
 }
 
 html.dark-mode .timer-status {
@@ -639,6 +728,22 @@ html.dark-mode .quick-notes-empty {
     color: var(--text);
 }
 
+html.dark-mode .quick-note-undo {
+    border-color:#4d665d;
+    background:#223029;
+    color:#eef3f0;
+}
+
+html.dark-mode .quick-note-undo p {
+    color:#a9b8b1;
+}
+
+html.dark-mode .quick-note-undo button {
+    border-color:#6f9689;
+    background:#587c70;
+    color:#fff;
+}
+
 html.dark-mode .sidebar-empty-topics {
     border-color: #465049;
     background: #202622;
@@ -696,6 +801,20 @@ html.dark-mode .dashboard-widget-control.is-active {
     color: #c6e1d8;
 }
 
+html.dark-mode .milestone-size-controls {
+    border-color: var(--border);
+    background: #202723;
+}
+
+html.dark-mode .milestone-size-label,
+html.dark-mode .milestone-list-size-hint {
+    color: #939d97;
+}
+
+html.dark-mode .milestone-size-button.dashboard-widget-control:disabled {
+    color: #606a64;
+}
+
 html.dark-mode .quick-note-actions .delete-action {
     border-color: #704a42;
     background: #472f2a;
@@ -703,8 +822,37 @@ html.dark-mode .quick-note-actions .delete-action {
 }
 
 html.dark-mode .flashcard-review-context a,
-html.dark-mode .panel-link {
+html.dark-mode .panel-link,
+html.dark-mode .learning-breadcrumb-link {
     color: #9fc2b7;
+}
+
+html.dark-mode .learning-breadcrumb-link:hover,
+html.dark-mode .learning-breadcrumb-current {
+    color: #eef3f0;
+}
+
+html.dark-mode .learning-breadcrumbs {
+    border-color: #3f4a44;
+    background: #1c2520;
+    box-shadow: 0 5px 16px rgba(0, 0, 0, .16);
+}
+
+html.dark-mode .learning-breadcrumbs a:hover {
+    background: #2a3731;
+    color: #eef3f0;
+}
+
+html.dark-mode .learning-breadcrumb-current,
+html.dark-mode .learning-breadcrumbs li[aria-current="page"] {
+    border-color: #46534c;
+    background: #29332e;
+    color: #eef3f0;
+    box-shadow: none;
+}
+
+html.dark-mode .learning-breadcrumbs li + li::before {
+    color: #65716a;
 }
 
 html.low-stimulus .app-layout,
@@ -917,4 +1065,34 @@ html.dark-mode .subject-workspace-icon{
 html.dark-mode .subject-overview-hint{
     border-color:#465049;
     color:var(--dark-muted);
+}
+
+html.dark-mode .manual-time-manager{
+    border-color:var(--border);
+    background:var(--dark-surface);
+}
+
+html.dark-mode .manual-time-manager > summary small,
+html.dark-mode .manual-time-summary-totals,
+html.dark-mode .manual-time-add-form > div p,
+html.dark-mode .manual-time-history-heading span,
+html.dark-mode .manual-time-empty{
+    color:var(--dark-muted);
+}
+
+html.dark-mode .manual-time-manager-body{
+    border-color:#3b453f;
+}
+
+html.dark-mode .manual-time-entry{
+    border-color:#435049;
+    background:#202823;
+}
+
+html.dark-mode .manual-time-entry-duration{
+    color:#afd0c6;
+}
+
+html.dark-mode .manual-time-empty{
+    border-color:#465049;
 }

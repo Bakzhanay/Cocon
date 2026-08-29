@@ -9,10 +9,12 @@ class UserPreferences(models.Model):
         related_name="study_preferences",
     )
     timezone = models.CharField(max_length=64, default="UTC")
+    auto_detect_timezone = models.BooleanField(default=True)
     daily_focus_goal_minutes = models.PositiveIntegerField(default=90)
     weekly_focus_goal_minutes = models.PositiveIntegerField(default=450)
     dashboard_pinned_widgets = models.JSONField(default=list, blank=True)
     dashboard_expanded_widgets = models.JSONField(default=list, blank=True)
+    dashboard_activity_hidden_before = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
         return f"Preferences for {self.user}"

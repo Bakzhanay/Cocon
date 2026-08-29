@@ -19,4 +19,5 @@ urlpatterns = [
     path("quick/add/", views.add_quick_note, name="add_quick_note"),
     path("quick/<int:note_id>/pin/", views.toggle_quick_note_pin, name="toggle_quick_note_pin"),
     path("quick/<int:note_id>/delete/", views.delete_quick_note, name="delete_quick_note"),
+    path("quick/<int:note_id>/undo-delete/", views.undo_delete_quick_note, name="undo_delete_quick_note"),
 ]

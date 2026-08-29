@@ -17,6 +17,11 @@ class StudySession(models.Model):
         ("reading", "Reading"),
     ]
 
+    ENTRY_SOURCE_CHOICES = [
+        ("timer", "Pomodoro timer"),
+        ("manual", "Manually logged"),
+    ]
+
     user = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
@@ -80,6 +85,12 @@ class StudySession(models.Model):
         default="general",
     )
 
+    entry_source = models.CharField(
+        max_length=10,
+        choices=ENTRY_SOURCE_CHOICES,
+        default="timer",
+    )
+
     topic_title = models.CharField(max_length=100, blank=True)
 
     section_title = models.CharField(max_length=100, blank=True)
@@ -109,6 +120,26 @@ class StudySession(models.Model):
             return f"{self.topic.title} ({self.duration_seconds}s)"
 
         return f"{self.duration_seconds}s"
+
+    @property
+    def context_label(self):
+        parts = [
+            self.topic.title if self.topic else self.topic_title,
+            self.section.title if self.section else self.section_title,
+            self.subject.title if self.subject else self.subject_title,
+        ]
+        label = " / ".join(part for part in parts if part)
+        if label:
+            return label
+        if self.activity_type == "flashcards":
+            return "Mixed flashcard review"
+        if self.activity_type == "notes":
+            return "Notes session"
+        return "General study"
+
+    @property
+    def duration_minutes(self):
+        return round(self.duration_seconds / 60)
 
 
 class StudySessionSegment(models.Model):

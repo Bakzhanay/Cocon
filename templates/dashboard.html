@@ -2,7 +2,7 @@
 {% load static %}
 
 {% block content %}
-<div class="dashboard-shell">
+<div class="dashboard-shell" data-timezone-dependent>
     <header class="dashboard-hero">
         <div>
             <span class="dashboard-eyebrow">Your learning overview</span>
@@ -54,6 +54,7 @@
         <div class="dashboard-section-label" id="pinned-widgets-title"><span aria-hidden="true">&#128204;</span> Pinned for you</div>
         <div class="dashboard-pinned-grid">
             {% if "tasks" in pinned_dashboard_widgets %}{% include "includes/dashboard_tasks_widget.html" %}{% endif %}
+            {% if "milestones" in pinned_dashboard_widgets %}{% include "includes/dashboard_milestones_widget.html" %}{% endif %}
             {% if "quick_notes" in pinned_dashboard_widgets %}{% include "includes/dashboard_quick_notes_widget.html" %}{% endif %}
             {% if "pinned_notes" in pinned_dashboard_widgets %}{% include "includes/dashboard_pinned_notes_widget.html" %}{% endif %}
         </div>
@@ -61,20 +62,61 @@
     {% endif %}
 
     <div class="dashboard-main-grid">
-        <section class="dashboard-panel weekly-panel">
+        <section class="dashboard-panel weekly-panel" id="focus-rhythm" data-rhythm-panel>
             <div class="panel-heading">
                 <div><span class="dashboard-eyebrow">Rhythm</span><h2>Focus time</h2></div>
-                <span class="panel-note">Last 7 days</span>
-            </div>
-            <div class="weekly-chart" aria-label="Focus minutes for the last seven days">
-                {% for day in weekly_chart %}
-                <div class="chart-day {% if day.is_today %}is-today{% endif %}">
-                    <span class="chart-value">{{ day.minutes }}</span>
-                    <div class="chart-track"><i style="height: {{ day.height }}%"></i></div>
-                    <span class="chart-label">{{ day.label }}</span>
+                <div class="rhythm-heading-tools">
+                    <span class="panel-note">{{ rhythm_total_minutes }} min &middot; {{ rhythm_label }}</span>
+                    <nav class="rhythm-periods" aria-label="Focus time period">
+                        <a href="?rhythm=7d#focus-rhythm" class="{% if rhythm_period == '7d' %}is-active{% endif %}">7 days</a>
+                        <a href="?rhythm=30d#focus-rhythm" class="{% if rhythm_period == '30d' %}is-active{% endif %}">30 days</a>
+                        <a href="?rhythm=year#focus-rhythm" class="{% if rhythm_period == 'year' %}is-active{% endif %}">12 months</a>
+                    </nav>
                 </div>
-                {% endfor %}
             </div>
+            <div class="rhythm-chart-scroll">
+                <div class="weekly-chart rhythm-chart rhythm-{{ rhythm_period }}" aria-label="{{ rhythm_aria_label }}">
+                    {% for bucket in rhythm_chart %}
+                    <div class="chart-day {% if bucket.is_current %}is-today{% endif %}">
+                        <button
+                            class="chart-bucket-button"
+                            type="button"
+                            data-rhythm-bucket
+                            data-breakdown-template="rhythm-breakdown-{{ forloop.counter0 }}"
+                            aria-expanded="false"
+                            aria-label="{{ bucket.display_date }}: {{ bucket.minutes }} focused minutes. Show breakdown."
+                        >
+                            <span class="chart-value">{{ bucket.minutes }}</span>
+                            <span class="chart-track"><i style="height: {{ bucket.height }}%"></i></span>
+                            <span class="chart-label">{{ bucket.label }}</span>
+                        </button>
+                        <template id="rhythm-breakdown-{{ forloop.counter0 }}">
+                            <div class="rhythm-breakdown-header">
+                                <strong>{{ bucket.display_date }}</strong>
+                                <span>{{ bucket.minutes }} focused min</span>
+                            </div>
+                            {% if bucket.breakdown %}
+                            <div class="rhythm-breakdown-list">
+                                {% for area in bucket.breakdown %}
+                                <section class="rhythm-breakdown-area">
+                                    <div><strong>{{ area.label }}</strong><span>{{ area.duration }}</span></div>
+                                    {% for context in area.contexts %}
+                                    <p><span>{{ context.label }}</span><strong>{{ context.duration }}</strong></p>
+                                    {% endfor %}
+                                </section>
+                                {% endfor %}
+                            </div>
+                            {% else %}
+                            <p class="rhythm-breakdown-empty">No completed focus sessions in this period.</p>
+                            {% endif %}
+                            <span class="rhythm-breakdown-tip">Click to keep this open</span>
+                        </template>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            <p class="rhythm-interaction-hint">Hover over a bar for details. Click to keep the breakdown open.</p>
+            <div class="rhythm-breakdown-popover" data-rhythm-popover hidden></div>
         </section>
 
         <section class="dashboard-panel continue-panel">
@@ -93,7 +135,7 @@
             {% if recent_session %}
                 <div class="continue-context">
                     {% if recent_session.subject or recent_session.subject_title or recent_session.section or recent_session.section_title or recent_session.topic or recent_session.topic_title %}
-                    <span>{{ recent_session.get_activity_type_display }}</span>
+                    <span>{{ recent_session.get_activity_type_display }}{% if recent_session.entry_source == "manual" %} &middot; Manually logged{% endif %}</span>
                     <h3>{% if recent_session.subject %}{{ recent_session.subject.title }}{% elif recent_session.subject_title %}{{ recent_session.subject_title }}{% elif recent_session.section %}{{ recent_session.section.title }}{% elif recent_session.section_title %}{{ recent_session.section_title }}{% elif recent_session.topic %}{{ recent_session.topic.title }}{% else %}{{ recent_session.topic_title }}{% endif %}</h3>
                     {% else %}
                     <span>Focus session</span>
@@ -111,7 +153,7 @@
 
     <div class="dashboard-detail-grid">
         <section class="dashboard-panel subject-focus-panel">
-            <div class="panel-heading"><div><span class="dashboard-eyebrow">Balance</span><h2>Focus by area</h2></div><a class="panel-link" href="{% url 'topics:analytics' %}">View analytics &rarr;</a></div>
+            <div class="panel-heading"><div><span class="dashboard-eyebrow">Balance &middot; all time</span><h2>Focus by area</h2></div><a class="panel-link" href="{% url 'topics:analytics' %}?period=all">View analytics &rarr;</a></div>
             {% if focus_by_topic %}
                 <div class="subject-focus-list">
                     {% for item in focus_by_topic %}
@@ -166,31 +208,47 @@
     {% if has_unpinned_dashboard_widgets %}
     <div class="dashboard-workspace-grid">
         {% if "tasks" not in pinned_dashboard_widgets %}{% include "includes/dashboard_tasks_widget.html" %}{% endif %}
+        {% if "milestones" not in pinned_dashboard_widgets %}{% include "includes/dashboard_milestones_widget.html" %}{% endif %}
         {% if "quick_notes" not in pinned_dashboard_widgets %}{% include "includes/dashboard_quick_notes_widget.html" %}{% endif %}
         {% if "pinned_notes" not in pinned_dashboard_widgets %}{% include "includes/dashboard_pinned_notes_widget.html" %}{% endif %}
     </div>
     {% endif %}
 
     <section class="dashboard-panel activity-panel">
-        <div class="panel-heading"><div><span class="dashboard-eyebrow">What you have done</span><h2>Recent focus activity</h2></div></div>
+        <div class="panel-heading activity-panel-heading">
+            <div><span class="dashboard-eyebrow">What you have done</span><h2>Recent focus activity</h2></div>
+            <div class="activity-panel-actions">
+                <a class="panel-link" href="{% url 'study:session_history' %}">View all &rarr;</a>
+                {% if recent_sessions %}
+                <form method="post" action="{% url 'study:clear_dashboard_activity' %}" onsubmit="return confirm('Hide these sessions from the dashboard? Your focus history and statistics will stay saved.');">
+                    {% csrf_token %}
+                    <button type="submit" class="activity-clear-button">Clear</button>
+                </form>
+                {% endif %}
+            </div>
+        </div>
         {% if recent_sessions %}
         <div class="activity-timeline">
             {% for session in recent_sessions %}
             <div class="activity-row">
                 <span class="activity-mark"></span>
                 <div>
-                    <strong>{% if session.topic %}{{ session.topic.title }}{% elif session.topic_title %}{{ session.topic_title }}{% endif %}{% if session.section %} / {{ session.section.title }}{% elif session.section_title %} / {{ session.section_title }}{% endif %}{% if session.subject %} / {{ session.subject.title }}{% elif session.subject_title %} / {{ session.subject_title }}{% endif %}{% if not session.topic and not session.topic_title and not session.section and not session.section_title and not session.subject and not session.subject_title %}{% if session.activity_type == "flashcards" %}Mixed flashcard review{% elif session.activity_type == "notes" %}Notes session{% else %}General study{% endif %}{% endif %}</strong>
-                    <small>{{ session.get_activity_type_display }} · {{ session.ended_at|timesince }} ago</small>
+                    <strong>{{ session.context_label }}</strong>
+                    <small>{{ session.get_activity_type_display }}{% if session.entry_source == "manual" %} &middot; Manually logged{% endif %} &middot; {{ session.ended_at|timesince }} ago</small>
                 </div>
-                <span>{% widthratio session.duration_seconds 60 1 %} min</span>
+                <span>{{ session.duration_minutes }} min</span>
             </div>
             {% endfor %}
         </div>
+        {% elif has_focus_history %}
+        <div class="dashboard-empty"><p>The dashboard is clear. Your complete focus history and statistics are still saved.</p><a class="panel-link" href="{% url 'study:session_history' %}">Open session history &rarr;</a></div>
         {% else %}<div class="dashboard-empty"><p>Your completed focus sessions will build a timeline here.</p></div>{% endif %}
     </section>
 </div>
 {% endblock %}
 
 {% block extra_scripts %}
-<script src="{% static 'js/dashboard_tasks.js' %}?v=2"></script>
+<script src="{% static 'js/dashboard_tasks.js' %}?v=4"></script>
+<script src="{% static 'js/dashboard_milestones.js' %}?v=3"></script>
+<script src="{% static 'js/dashboard_rhythm.js' %}?v=1"></script>
 {% endblock %}

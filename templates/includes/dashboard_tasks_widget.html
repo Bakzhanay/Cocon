@@ -1,10 +1,14 @@
 <section
     class="dashboard-panel dashboard-widget planner-panel{% if "tasks" in pinned_dashboard_widgets %} is-pinned{% endif %}{% if "tasks" in expanded_dashboard_widgets %} is-expanded{% endif %}"
     data-dashboard-widget="tasks"
+    data-scroll-anchor="dashboard-tasks"
 >
     <div class="panel-heading dashboard-widget-heading">
         <div><span class="dashboard-eyebrow">Plan the next step</span><h2>To-do list</h2></div>
         <div class="dashboard-widget-actions">
+            <a class="dashboard-widget-control task-journal-link" href="{% url 'planner:task_journal' %}">
+                <span aria-hidden="true">&#128214;</span><span class="widget-control-label">Journal</span>
+            </a>
             <form method="post" action="{% url 'topics:toggle_dashboard_widget' 'tasks' 'pin' %}">
                 {% csrf_token %}
                 <button class="dashboard-widget-control{% if "tasks" in pinned_dashboard_widgets %} is-active{% endif %}" type="submit" aria-label="{% if "tasks" in pinned_dashboard_widgets %}Unpin To-do list from the top of the dashboard{% else %}Pin To-do list to the top of the dashboard{% endif %}" title="{% if "tasks" in pinned_dashboard_widgets %}Unpin from top{% else %}Pin to top{% endif %}">
@@ -77,9 +81,18 @@
     {% if tasks %}
         <div class="task-list">
             {% for task in tasks %}
-                <div class="task-row {% if task.completed %}is-completed{% endif %} {% if task.due_date and task.due_date < today and not task.completed %}is-overdue{% endif %}" data-task-row="{{ task.id }}">
-                    <form method="post" action="{% url 'planner:toggle_task' task.id %}">{% csrf_token %}<button class="task-check" aria-label="Toggle task">{% if task.completed %}&#10003;{% endif %}</button></form>
+                <div class="task-row{% if task.is_pinned %} is-pinned{% endif %}{% if task.completed %} is-completed{% endif %}{% if task.due_date and task.due_date < today and not task.completed %} is-overdue{% endif %}" data-task-row="{{ task.id }}">
+                    <button
+                        type="button"
+                        class="task-check"
+                        aria-label="Complete {{ task.title }}"
+                        data-complete-task
+                        data-task-complete-url="{% url 'planner:toggle_task' task.id %}"
+                        data-task-title="{{ task.title }}"
+                        data-task-summary="{% if task.is_study_task %}{{ task.study_context_label }} &middot; {{ task.focused_minutes }} of {{ task.target_minutes }} focused minutes{% elif task.due_date %}Planned for {{ task.due_date|date:'M j' }}{% else %}Regular task{% endif %}"
+                    ></button>
                     <div class="task-details">
+                        {% if task.is_pinned %}<span class="task-pinned-badge">Pinned</span>{% endif %}
                         {% if task.is_study_task %}<span class="task-study-badge">Study plan</span>{% endif %}
                         <strong>{{ task.title }}</strong>
                         <span>{% if task.is_study_task %}{{ task.study_context_label }} &middot; {% endif %}{% if task.due_date %}{{ task.due_date|date:"M j" }}{% else %}No date{% endif %} &middot; {{ task.get_priority_display }}</span>
@@ -95,18 +108,162 @@
                                     class="task-start-focus"
                                     data-start-study-task
                                     data-task-id="{{ task.id }}"
-                                    data-task-title="{{ task.title }}">
+                                    data-task-title="{{ task.title }}"
+                                    data-task-topic-id="{{ task.topic_id|default_if_none:'' }}"
+                                    data-task-section-id="{{ task.section_id|default_if_none:'' }}"
+                                    data-task-subject-id="{{ task.subject_id|default_if_none:'' }}"
+                                    data-task-activity-type="{% if task.activity_type == 'any' %}general{% else %}{{ task.activity_type }}{% endif %}"
+                                    data-task-context-label="{{ task.study_context_label }}">
                                 Start focus
                             </button>
                             {% endif %}
                         </div>
                         {% endif %}
                     </div>
-                    <form method="post" action="{% url 'planner:delete_task' task.id %}">{% csrf_token %}<button class="task-delete" aria-label="Delete task">&times;</button></form>
+                    <div class="task-row-actions">
+                        <button
+                            type="button"
+                            class="task-edit"
+                            aria-label="Edit {{ task.title }}"
+                            title="Edit"
+                            data-edit-task
+                            data-task-edit-url="{% url 'planner:edit_task' task.id %}"
+                            data-task-type="{% if task.is_study_task %}study{% else %}regular{% endif %}"
+                            data-task-title="{{ task.title }}"
+                            data-task-due-date="{{ task.due_date|date:'Y-m-d' }}"
+                            data-task-priority="{{ task.priority }}"
+                            data-task-context="{% if task.subject_id %}subject:{{ task.subject_id }}{% elif task.section_id %}section:{{ task.section_id }}{% elif task.topic_id %}topic:{{ task.topic_id }}{% else %}general{% endif %}"
+                            data-task-minutes="{{ task.target_minutes }}"
+                            data-task-activity="{{ task.activity_type }}"
+                        >&#9998;</button>
+                        <form method="post" action="{% url 'planner:toggle_task_pin' task.id %}">
+                            {% csrf_token %}
+                            <button class="task-pin{% if task.is_pinned %} is-pinned{% endif %}" aria-label="{% if task.is_pinned %}Unpin {{ task.title }}{% else %}Pin {{ task.title }}{% endif %}" title="{% if task.is_pinned %}Unpin{% else %}Pin to top{% endif %}">&#128204;</button>
+                        </form>
+                        <form method="post" action="{% url 'planner:delete_task' task.id %}">{% csrf_token %}<button class="task-delete" aria-label="Delete task">&times;</button></form>
+                    </div>
                 </div>
             {% endfor %}
         </div>
     {% else %}
         <div class="dashboard-empty compact"><p>No tasks yet. Add the next small step.</p></div>
     {% endif %}
+
+    <dialog id="taskEditDialog" class="task-edit-dialog" aria-labelledby="taskEditTitle">
+        <form method="post" class="task-edit-form" data-study-task-form data-task-edit-form>
+            {% csrf_token %}
+            <div class="task-edit-heading">
+                <div>
+                    <span class="dashboard-eyebrow">Adjust the plan</span>
+                    <h3 id="taskEditTitle">Edit to-do</h3>
+                </div>
+                <button type="button" class="task-edit-close" aria-label="Close edit dialog" data-close-task-edit>&times;</button>
+            </div>
+
+            <div class="task-edit-primary">
+                <label>
+                    <span>Type</span>
+                    <select name="task_type" data-task-type>
+                        <option value="regular">Regular task</option>
+                        <option value="study">Study plan</option>
+                    </select>
+                </label>
+                <label class="task-edit-title-field">
+                    <span>What needs to be done?</span>
+                    <input name="title" maxlength="220" required data-task-title>
+                </label>
+                <label>
+                    <span>Due date</span>
+                    <input name="due_date" type="date" data-task-due-date>
+                </label>
+                <label>
+                    <span>Priority</span>
+                    <select name="priority" data-task-priority>
+                        <option value="high">High</option>
+                        <option value="normal">Normal</option>
+                        <option value="low">Low</option>
+                    </select>
+                </label>
+            </div>
+
+            <div class="study-task-fields task-edit-study-fields" data-study-task-fields hidden>
+                <div class="study-context-picker">
+                    <span class="study-field-label">Study item</span>
+                    <input type="search"
+                           class="study-context-search"
+                           placeholder="Search topics, sections or subjects..."
+                           aria-label="Search study items in edit form"
+                           autocomplete="off"
+                           disabled
+                           data-study-context-search>
+                    <select name="study_context" aria-label="Study item in edit form" disabled data-study-context>
+                        <option value="">Choose what to study</option>
+                        <option value="general">General study</option>
+                        {% for topic in task_topics %}
+                        <option value="topic:{{ topic.id }}">Topic &middot; {{ topic.title }}</option>
+                            {% for section in topic.sections.all %}
+                            <option value="section:{{ section.id }}">Section &middot; {{ topic.title }} / {{ section.title }}</option>
+                                {% for subject in section.subjects.all %}
+                                <option value="subject:{{ subject.id }}">Subject &middot; {{ topic.title }} / {{ section.title }} / {{ subject.title }}</option>
+                                {% endfor %}
+                            {% endfor %}
+                        {% endfor %}
+                    </select>
+                    <small class="study-context-results" aria-live="polite" data-study-context-results></small>
+                </div>
+                <label>
+                    <span>Planned time</span>
+                    <input name="target_minutes" type="number" min="5" max="1440" step="5" placeholder="Minutes" disabled data-task-minutes>
+                </label>
+                <label>
+                    <span>Count activity</span>
+                    <select name="activity_type" disabled data-task-activity>
+                        <option value="any">Any study activity</option>
+                        <option value="general">General study</option>
+                        <option value="notes">Notes</option>
+                        <option value="flashcards">Flashcards</option>
+                        <option value="reading">Reading</option>
+                    </select>
+                </label>
+                <p>Changing the study item, activity, or planned time resets its accumulated focus progress.</p>
+            </div>
+
+            <div class="task-edit-actions">
+                <button type="button" class="task-edit-cancel" data-close-task-edit>Cancel</button>
+                <button type="submit" class="task-edit-save" data-task-submit>Save changes</button>
+            </div>
+        </form>
+    </dialog>
+
+    <dialog id="taskCompleteDialog" class="task-edit-dialog task-complete-dialog" aria-labelledby="taskCompleteTitle">
+        <form method="post" class="task-edit-form task-complete-form" data-task-complete-form>
+            {% csrf_token %}
+            <div class="task-edit-heading">
+                <div>
+                    <span class="dashboard-eyebrow">Save what you accomplished</span>
+                    <h3 id="taskCompleteTitle">Complete task</h3>
+                </div>
+                <button type="button" class="task-edit-close" aria-label="Close completion dialog" data-close-task-complete>&times;</button>
+            </div>
+            <div class="task-complete-context">
+                <strong data-task-complete-title></strong>
+                <span data-task-complete-summary></span>
+            </div>
+            <label class="task-complete-note">
+                <span>What did you accomplish? <em>Optional</em></span>
+                <textarea
+                    name="completion_note"
+                    maxlength="2000"
+                    rows="5"
+                    placeholder="For example: Finished the project, understood a difficult concept, or practised the whole piece..."
+                    data-task-completion-note
+                ></textarea>
+            </label>
+            <p class="task-complete-hint">This reflection will stay with the task in your journal. You can edit it later or leave it empty.</p>
+            <div class="task-edit-actions">
+                <button type="button" class="task-edit-cancel" data-close-task-complete>Cancel</button>
+                <button type="submit" class="task-edit-save">Complete &amp; save</button>
+            </div>
+        </form>
+    </dialog>
 </section>

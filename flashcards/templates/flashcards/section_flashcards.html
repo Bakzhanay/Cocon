@@ -3,14 +3,17 @@
 
 {% block content %}
 <div class="flashcard-page">
-    <a href="{% url 'topics:section_detail' section.id %}" class="back-link">&larr; Back to section</a>
+    {% include "includes/learning_breadcrumbs.html" with topic=section.topic section=section current_label="Flashcards" %}
     <header class="flashcard-page-header">
         <div>
             <span class="dashboard-eyebrow">{{ section.topic.title }}</span>
             <h1>{{ section.title }} flashcards</h1>
             <p>Section-wide cards with the same review system as your subjects.</p>
         </div>
-        <div class="flashcard-toolbar"><a href="{% url 'flashcards:add_section_flashcard' section.id %}" class="toolbar-btn primary">+ Add flashcard</a></div>
+        <div class="flashcard-toolbar">
+            <a href="{% url 'flashcards:bulk_add_section_flashcards' section.id %}" class="toolbar-btn">Bulk add</a>
+            <a href="{% url 'flashcards:add_section_flashcard' section.id %}" class="toolbar-btn primary">+ Add flashcard</a>
+        </div>
     </header>
 
     {% if total_count %}<div class="flashcard-progress-card"><div><strong>{{ learned_count }} of {{ total_count }}</strong><span>mastered cards</span></div><div class="flashcard-progress-track"><i style="width: {{ progress_percent }}%"></i></div><span>{{ progress_percent }}%</span></div>{% endif %}
@@ -20,7 +23,7 @@
         {% if learned_cards %}<div class="flashcard-list-divider"><span>Mastered</span><i></i></div>{% endif %}
         {% for card in learned_cards %}{% include "flashcards/_flashcard.html" %}{% endfor %}
     </div>
-    {% else %}<div class="flashcard-empty"><strong>No flashcards yet</strong><p>Create the first card for this section.</p><a href="{% url 'flashcards:add_section_flashcard' section.id %}">Add flashcard</a></div>{% endif %}
+    {% else %}<div class="flashcard-empty"><strong>No flashcards yet</strong><p>Create one card, or paste a complete AI-generated deck at once.</p><a href="{% url 'flashcards:bulk_add_section_flashcards' section.id %}">Bulk add flashcards</a></div>{% endif %}
 </div>
 <script src="{% static 'js/flashcards.js' %}?v=2"></script>
 {% endblock %}

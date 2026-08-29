@@ -138,6 +138,24 @@ urlpatterns = [
     ),
 
     path(
+        "subjects/<int:subject_id>/log-time/",
+        views.log_subject_time,
+        name="log_subject_time",
+    ),
+
+    path(
+        "subjects/<int:subject_id>/log-time/<int:session_id>/edit/",
+        views.edit_subject_time,
+        name="edit_subject_time",
+    ),
+
+    path(
+        "subjects/<int:subject_id>/log-time/<int:session_id>/delete/",
+        views.delete_subject_time,
+        name="delete_subject_time",
+    ),
+
+    path(
         "subjects/<int:subject_id>/pin/",
         views.toggle_subject_pin,
         name="toggle_subject_pin",

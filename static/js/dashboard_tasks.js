@@ -1,8 +1,7 @@
 (function () {
     "use strict";
 
-    const form = document.querySelector("[data-study-task-form]");
-    if (form) {
+    function setupTaskForm(form) {
         const type = form.querySelector("[data-task-type]");
         const title = form.querySelector("[data-task-title]");
         const fields = form.querySelector("[data-study-task-fields]");
@@ -69,13 +68,86 @@
             title.placeholder = isStudy
                 ? "Optional title — Cocon can name it"
                 : "What needs to be done?";
-            submit.textContent = isStudy ? "Add plan" : "Add";
+            if (!form.matches("[data-task-edit-form]")) {
+                submit.textContent = isStudy ? "Add plan" : "Add";
+            }
         }
 
         contextSearch.addEventListener("input", renderContextOptions);
         type.addEventListener("change", renderTaskType);
+        form.addEventListener("cocon:refresh-task-form", () => {
+            renderContextOptions();
+            renderTaskType();
+        });
         renderContextOptions();
         renderTaskType();
+    }
+
+    document.querySelectorAll("[data-study-task-form]").forEach(setupTaskForm);
+
+    const editDialog = document.getElementById("taskEditDialog");
+    const editForm = editDialog?.querySelector("[data-task-edit-form]");
+    if (editDialog && editForm) {
+        const editType = editForm.querySelector("[data-task-type]");
+        const editTitle = editForm.querySelector("[data-task-title]");
+        const editDueDate = editForm.querySelector("[data-task-due-date]");
+        const editPriority = editForm.querySelector("[data-task-priority]");
+        const editContext = editForm.querySelector("[data-study-context]");
+        const editContextSearch = editForm.querySelector("[data-study-context-search]");
+        const editMinutes = editForm.querySelector("[data-task-minutes]");
+        const editActivity = editForm.querySelector("[data-task-activity]");
+
+        document.querySelectorAll("[data-edit-task]").forEach((button) => {
+            button.addEventListener("click", () => {
+                editForm.action = button.dataset.taskEditUrl;
+                editType.value = button.dataset.taskType;
+                editTitle.value = button.dataset.taskTitle;
+                editDueDate.value = button.dataset.taskDueDate;
+                editPriority.value = button.dataset.taskPriority;
+                editContextSearch.value = "";
+                editForm.dispatchEvent(new Event("cocon:refresh-task-form"));
+                editContext.value = button.dataset.taskContext;
+                editMinutes.value = button.dataset.taskMinutes;
+                editActivity.value = button.dataset.taskActivity;
+                editDialog.showModal();
+                editTitle.focus();
+            });
+        });
+
+        editDialog.querySelectorAll("[data-close-task-edit]").forEach((button) => {
+            button.addEventListener("click", () => editDialog.close());
+        });
+
+        editDialog.addEventListener("click", (event) => {
+            if (event.target === editDialog) editDialog.close();
+        });
+    }
+
+    const completeDialog = document.getElementById("taskCompleteDialog");
+    const completeForm = completeDialog?.querySelector("[data-task-complete-form]");
+    if (completeDialog && completeForm) {
+        const completeTitle = completeDialog.querySelector("[data-task-complete-title]");
+        const completeSummary = completeDialog.querySelector("[data-task-complete-summary]");
+        const completeNote = completeDialog.querySelector("[data-task-completion-note]");
+
+        document.querySelectorAll("[data-complete-task]").forEach((button) => {
+            button.addEventListener("click", () => {
+                completeForm.action = button.dataset.taskCompleteUrl;
+                completeTitle.textContent = button.dataset.taskTitle;
+                completeSummary.textContent = button.dataset.taskSummary;
+                completeNote.value = "";
+                completeDialog.showModal();
+                completeNote.focus();
+            });
+        });
+
+        completeDialog.querySelectorAll("[data-close-task-complete]").forEach((button) => {
+            button.addEventListener("click", () => completeDialog.close());
+        });
+
+        completeDialog.addEventListener("click", (event) => {
+            if (event.target === completeDialog) completeDialog.close();
+        });
     }
 
     window.addEventListener("cocon:task-progress", (event) => {
@@ -100,6 +172,7 @@
             const check = row.querySelector(".task-check");
             if (check) check.textContent = "✓";
             row.querySelector("[data-start-study-task]")?.remove();
+            window.setTimeout(() => row.remove(), 450);
         }
     });
 })();

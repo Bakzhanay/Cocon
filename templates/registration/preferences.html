@@ -10,7 +10,8 @@
             {% csrf_token %}
             <div class="form-group"><label for="{{ form.daily_focus_goal_minutes.id_for_label }}">Daily focus goal (minutes)</label>{{ form.daily_focus_goal_minutes }}{{ form.daily_focus_goal_minutes.errors }}</div>
             <div class="form-group"><label for="{{ form.weekly_focus_goal_minutes.id_for_label }}">Weekly focus goal (minutes)</label>{{ form.weekly_focus_goal_minutes }}{{ form.weekly_focus_goal_minutes.errors }}</div>
-            <div class="form-group"><label for="{{ form.timezone.id_for_label }}">Timezone</label>{{ form.timezone }}{{ form.timezone.errors }}</div>
+            <div class="form-group form-checkbox-group"><label for="{{ form.auto_detect_timezone.id_for_label }}">{{ form.auto_detect_timezone }} Detect timezone automatically from this device</label>{{ form.auto_detect_timezone.errors }}<p class="form-help">Recommended so daily and weekly statistics follow your local calendar.</p></div>
+            <div class="form-group"><label for="{{ form.timezone.id_for_label }}">Manual timezone (when automatic detection is off)</label>{{ form.timezone }}{{ form.timezone.errors }}</div>
             <div class="form-actions"><button type="submit" class="primary-btn">Save preferences</button><a href="{% url 'topics:home' %}" class="secondary-btn">Cancel</a></div>
         </form>
     </div>

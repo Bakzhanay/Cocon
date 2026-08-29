@@ -22,9 +22,11 @@ class Task(models.Model):
     title = models.CharField(max_length=220)
     due_date = models.DateField(null=True, blank=True, db_index=True)
     priority = models.CharField(max_length=10, choices=PRIORITY_CHOICES, default="normal")
+    is_pinned = models.BooleanField(default=False, db_index=True)
     completed = models.BooleanField(default=False, db_index=True)
     created_at = models.DateTimeField(auto_now_add=True)
     completed_at = models.DateTimeField(null=True, blank=True)
+    completion_note = models.TextField(blank=True, default="")
     topic = models.ForeignKey(
         "topics.Topic",
         on_delete=models.SET_NULL,
@@ -98,3 +100,62 @@ class Task(models.Model):
         self.completed = completed
         self.completed_at = timezone.now() if completed else None
         self.completed_by_focus = False
+
+
+class Milestone(models.Model):
+    KIND_CHOICES = [
+        ("plan", "Plan"),
+        ("deadline", "Deadline"),
+    ]
+
+    PRIORITY_CHOICES = [
+        ("low", "Low"),
+        ("normal", "Normal"),
+        ("high", "Important"),
+    ]
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="milestones",
+    )
+    title = models.CharField(max_length=220)
+    description = models.TextField(blank=True, default="")
+    kind = models.CharField(max_length=10, choices=KIND_CHOICES, default="plan")
+    target_at = models.DateTimeField(null=True, blank=True, db_index=True)
+    priority = models.CharField(
+        max_length=10,
+        choices=PRIORITY_CHOICES,
+        default="normal",
+        db_index=True,
+    )
+    completed = models.BooleanField(default=False, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["completed", "target_at", "-created_at"]
+        constraints = [
+            models.CheckConstraint(
+                condition=(
+                    models.Q(kind="plan")
+                    | models.Q(target_at__isnull=False)
+                ),
+                name="deadline_has_target_at",
+            ),
+        ]
+
+    def __str__(self):
+        return self.title
+
+    @property
+    def target_has_passed(self):
+        return bool(
+            self.target_at
+            and not self.completed
+            and self.target_at < timezone.now()
+        )
+
+    def mark_manually(self, completed):
+        self.completed = completed
+        self.completed_at = timezone.now() if completed else None

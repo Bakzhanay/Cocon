@@ -77,7 +77,12 @@ class UserPreferencesForm(forms.ModelForm):
 
     class Meta:
         model = UserPreferences
-        fields = ("daily_focus_goal_minutes", "weekly_focus_goal_minutes", "timezone")
+        fields = (
+            "daily_focus_goal_minutes",
+            "weekly_focus_goal_minutes",
+            "auto_detect_timezone",
+            "timezone",
+        )
         widgets = {
             "daily_focus_goal_minutes": forms.NumberInput(attrs={"min": 15, "step": 15}),
             "weekly_focus_goal_minutes": forms.NumberInput(attrs={"min": 30, "step": 30}),

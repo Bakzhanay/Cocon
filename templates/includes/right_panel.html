@@ -78,6 +78,13 @@
                     {% if current_activity_type == "flashcards" %}Tracking mixed flashcard review{% elif current_activity_type == "notes" %}Tracking notes{% else %}General study session{% endif %}
                 {% endif %}
             </p>
+            <label class="tracking-mode-control" id="trackingModeControl">
+                <input id="trackingContextLock" type="checkbox">
+                <span>
+                    <strong id="trackingModeTitle">Follow the page I open</strong>
+                    <small id="trackingModeHint">Keep this off to split focus as you move between learning areas.</small>
+                </span>
+            </label>
             <p id="timerMessage" class="timer-message" role="status"></p>
         </section>
 
@@ -131,6 +138,7 @@
             <div id="calendarGrid" class="calendar-grid" aria-label="Completed study sessions"></div>
             <div class="calendar-legends">
                 <div class="calendar-legend"><span></span> Completed focus session</div>
+                <div class="calendar-legend completed-task-legend"><span></span> Completed to-do</div>
                 <div class="calendar-legend task-legend"><span></span> Planned task</div>
                 <div class="calendar-legend missed-legend"><span></span> Missed plan</div>
             </div>

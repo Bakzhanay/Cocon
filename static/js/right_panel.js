@@ -23,6 +23,12 @@
     const timerMessage = document.getElementById("timerMessage");
     const sessionContext = document.getElementById("sessionContext");
     const defaultSessionContextHTML = sessionContext ? sessionContext.innerHTML : "";
+    const defaultSessionContextText = sessionContext
+        ? sessionContext.textContent.replace(/\s+/g, " ").trim()
+        : "General study session";
+    const trackingContextLock = document.getElementById("trackingContextLock");
+    const trackingModeTitle = document.getElementById("trackingModeTitle");
+    const trackingModeHint = document.getElementById("trackingModeHint");
     const startButton = document.getElementById("timerStart");
     const pauseButton = document.getElementById("timerPause");
     const resetButton = document.getElementById("timerReset");
@@ -43,6 +49,13 @@
         pausedSeconds: 0,
         taskId: null,
         taskTitle: "",
+        taskContext: null,
+        taskContextLabel: "",
+        trackingMode: "follow",
+        lockedContext: null,
+        lockedContextLabel: "",
+        activeContext: null,
+        activeContextLabel: "",
     };
 
     let state = loadState();
@@ -67,6 +80,12 @@
                 breakMinutes: validBreak ? Number(saved.breakMinutes) : 5,
                 phase: saved.phase === "break" ? "break" : "study",
             };
+
+            if (restored.trackingMode !== "locked" || !restored.lockedContext) {
+                restored.trackingMode = "follow";
+                restored.lockedContext = null;
+                restored.lockedContextLabel = "";
+            }
 
             if (restored.running && restored.endAt) {
                 restored.remaining = Math.max(0, Math.ceil((restored.endAt - Date.now()) / 1000));
@@ -93,9 +112,18 @@
         return (state.phase === "study" ? state.studyMinutes : state.breakMinutes) * 60;
     }
 
+    function contextLabelFromText(value) {
+        const label = String(value || "")
+            .replace(/\s+/g, " ")
+            .trim()
+            .replace(/^[\u25cf\u2022\u00b7\s]+/, "")
+            .replace(/^Tracking\s+/i, "");
+        return label === "General study session" ? "General study" : (label || "General study");
+    }
+
     function renderSessionContext() {
         if (!sessionContext) return;
-        if (!state.taskId) {
+        if (!state.taskId && state.trackingMode !== "locked") {
             sessionContext.innerHTML = defaultSessionContextHTML;
             return;
         }
@@ -103,15 +131,38 @@
         const marker = document.createElement("span");
         marker.setAttribute("aria-hidden", "true");
         marker.textContent = "●";
-        const label = document.createTextNode(` Counting toward ${state.taskTitle || "study plan"}`);
-        const clearButton = document.createElement("button");
-        clearButton.type = "button";
-        clearButton.className = "session-task-clear";
-        clearButton.dataset.clearStudyTask = "";
-        clearButton.setAttribute("aria-label", "Stop counting toward this study plan");
-        clearButton.title = "Clear study plan";
-        clearButton.textContent = "×";
-        sessionContext.replaceChildren(marker, label, clearButton);
+        const contextLabel = state.trackingMode === "locked"
+            ? state.lockedContextLabel || "General study"
+            : contextLabelFromText(defaultSessionContextText);
+        const children = [marker, document.createTextNode(` Tracking ${contextLabel}`)];
+        if (state.taskId) {
+            children.push(document.createTextNode(` · Counting toward ${state.taskTitle || "study plan"}`));
+            const clearButton = document.createElement("button");
+            clearButton.type = "button";
+            clearButton.className = "session-task-clear";
+            clearButton.dataset.clearStudyTask = "";
+            clearButton.setAttribute("aria-label", "Stop counting toward this study plan");
+            clearButton.title = "Clear study plan";
+            clearButton.textContent = "×";
+            children.push(clearButton);
+        }
+        sessionContext.replaceChildren(...children);
+    }
+
+    function renderTrackingMode() {
+        if (!trackingContextLock || !trackingModeTitle || !trackingModeHint) return;
+        const locked = state.trackingMode === "locked" && Boolean(state.lockedContext);
+        const candidate = trackingCandidate();
+        const label = locked
+            ? state.lockedContextLabel || "General study"
+            : candidate.label;
+        trackingContextLock.checked = locked;
+        trackingModeTitle.textContent = locked
+            ? `Keep tracking ${label}`
+            : "Follow the page I open";
+        trackingModeHint.textContent = locked
+            ? "Browse anywhere in Cocon; this focus session stays assigned here."
+            : `Turn this on to keep tracking ${label} while you browse.`;
     }
 
     function renderTimer() {
@@ -155,6 +206,7 @@
             button.classList.toggle("is-selected", Number(button.dataset.minutes) === state.breakMinutes);
         });
         renderSessionContext();
+        renderTrackingMode();
     }
 
     function setMessage(message) {
@@ -201,6 +253,49 @@
         };
     }
 
+    function normalizedContext(context) {
+        if (!context || typeof context !== "object") return null;
+        return {
+            topic_id: contextValue(context.topic_id),
+            subject_id: contextValue(context.subject_id),
+            section_id: contextValue(context.section_id),
+            activity_type: context.activity_type || "general",
+        };
+    }
+
+    function trackingCandidate() {
+        if (state.sessionId && state.activeContext) {
+            return {
+                context: normalizedContext(state.activeContext),
+                label: state.activeContextLabel || contextLabelFromText(defaultSessionContextText),
+            };
+        }
+        if (state.taskId && state.taskContext) {
+            return {
+                context: normalizedContext(state.taskContext),
+                label: state.taskContextLabel || state.taskTitle || "Study plan",
+            };
+        }
+        return {
+            context: currentStudyContext(),
+            label: contextLabelFromText(defaultSessionContextText),
+        };
+    }
+
+    function effectiveStudyContext() {
+        if (state.trackingMode === "locked" && state.lockedContext) {
+            return normalizedContext(state.lockedContext);
+        }
+        return currentStudyContext();
+    }
+
+    function rememberActiveContext(payload) {
+        if (!payload || typeof payload !== "object") return;
+        state.activeContext = normalizedContext(payload);
+        state.activeContextLabel = payload.label || "General study";
+        saveState();
+    }
+
     function elapsedStudySeconds() {
         if (state.phase !== "study") return 0;
         const total = state.studyMinutes * 60;
@@ -217,6 +312,7 @@
             || !state.sessionId
             || (!state.running && !state.paused)
         ) return;
+        if (state.trackingMode === "locked" && state.lockedContext) return;
         if (pendingContextPromise) return pendingContextPromise;
 
         const sessionId = state.sessionId;
@@ -225,6 +321,13 @@
             elapsed_seconds: elapsedStudySeconds(),
             ...currentStudyContext(),
         })
+            .then((data) => {
+                if (Number(state.sessionId) === Number(sessionId)) {
+                    rememberActiveContext(data.context);
+                    renderTimer();
+                }
+                return data;
+            })
             .catch((error) => {
                 if (Number(state.sessionId) === Number(sessionId)) {
                     setMessage(error.message);
@@ -242,7 +345,7 @@
 
         const nonce = ++sessionRequestNonce;
         const payload = {
-            ...currentStudyContext(),
+            ...effectiveStudyContext(),
             planned_duration_seconds: state.studyMinutes * 60,
             task_id: state.taskId,
         };
@@ -254,6 +357,7 @@
                     return null;
                 }
                 state.sessionId = data.session_id;
+                rememberActiveContext(data.context);
                 saveState();
                 setMessage("");
                 return data.session_id;
@@ -262,6 +366,8 @@
                 if (state.taskId) {
                     state.taskId = null;
                     state.taskTitle = "";
+                    state.taskContext = null;
+                    state.taskContextLabel = "";
                     saveState();
                     renderTimer();
                 }
@@ -280,6 +386,8 @@
         if (pendingContextPromise) await pendingContextPromise;
         const sessionId = state.sessionId;
         state.sessionId = null;
+        state.activeContext = null;
+        state.activeContextLabel = "";
         saveState();
         if (!sessionId) return false;
 
@@ -299,6 +407,8 @@
                 if (data.task.completed && Number(state.taskId) === Number(data.task.id)) {
                     state.taskId = null;
                     state.taskTitle = "";
+                    state.taskContext = null;
+                    state.taskContextLabel = "";
                     saveState();
                     renderSessionContext();
                 }
@@ -315,6 +425,8 @@
     async function cancelStudySession() {
         const sessionId = state.sessionId;
         state.sessionId = null;
+        state.activeContext = null;
+        state.activeContextLabel = "";
         sessionRequestNonce += 1;
         saveState();
         if (!sessionId) return;
@@ -364,6 +476,9 @@
         state.endAt = null;
         state.pausedAt = null;
         state.pausedSeconds = 0;
+        state.trackingMode = "follow";
+        state.lockedContext = null;
+        state.lockedContextLabel = "";
         lastAlarmSecond = null;
         saveState();
         renderTimer();
@@ -446,6 +561,7 @@
     let audioContext = null;
     let activeSoundNodes = [];
     let activeSoundTimers = [];
+    let soundUnlockFallbackBound = false;
     let soundPrefs = loadSoundPrefs();
 
     function loadSoundPrefs() {
@@ -465,9 +581,44 @@
             const AudioContextClass = window.AudioContext || window.webkitAudioContext;
             if (!AudioContextClass) return null;
             audioContext = new AudioContextClass();
+            audioContext.addEventListener("statechange", () => {
+                if (audioContext.state === "running") {
+                    unbindSoundUnlockFallback();
+                } else if (soundPrefs.sound !== "none" && !soundPrefs.muted) {
+                    bindSoundUnlockFallback();
+                }
+            });
         }
-        if (audioContext.state === "suspended") audioContext.resume();
+        if (audioContext.state === "suspended") {
+            const resumePromise = audioContext.resume();
+            if (resumePromise && typeof resumePromise.catch === "function") {
+                resumePromise.catch(() => {
+                    bindSoundUnlockFallback();
+                });
+            }
+        }
         return audioContext;
+    }
+
+    function unlockSelectedSound() {
+        const context = ensureAudioContext();
+        if (!context) return;
+        resumeSelectedSound();
+        if (context.state === "running") unbindSoundUnlockFallback();
+    }
+
+    function bindSoundUnlockFallback() {
+        if (soundUnlockFallbackBound) return;
+        soundUnlockFallbackBound = true;
+        document.addEventListener("pointerdown", unlockSelectedSound, true);
+        document.addEventListener("keydown", unlockSelectedSound, true);
+    }
+
+    function unbindSoundUnlockFallback() {
+        if (!soundUnlockFallbackBound) return;
+        soundUnlockFallbackBound = false;
+        document.removeEventListener("pointerdown", unlockSelectedSound, true);
+        document.removeEventListener("keydown", unlockSelectedSound, true);
     }
 
     function playDing(step) {
@@ -600,7 +751,10 @@
 
     function startBackgroundSound(profile) {
         stopBackgroundSound();
-        if (profile === "none" || soundPrefs.muted) return;
+        if (profile === "none" || soundPrefs.muted) {
+            unbindSoundUnlockFallback();
+            return;
+        }
         const context = ensureAudioContext();
         if (!context) return;
 
@@ -640,12 +794,14 @@
         }
         source.start();
         addAmbientDetails(profile, soundPrefs.volume / 100);
+        if (context.state === "running") unbindSoundUnlockFallback();
+        else bindSoundUnlockFallback();
     }
 
     function resumeSelectedSound() {
-        if (soundPrefs.sound !== "none" && activeSoundNodes.length === 0 && !soundPrefs.muted) {
-            startBackgroundSound(soundPrefs.sound);
-        }
+        if (soundPrefs.sound === "none" || soundPrefs.muted) return;
+        if (activeSoundNodes.length === 0) startBackgroundSound(soundPrefs.sound);
+        else ensureAudioContext();
     }
 
     const soundSelect = document.getElementById("backgroundSound");
@@ -677,6 +833,16 @@
         else startBackgroundSound(soundPrefs.sound);
     });
 
+    // A full Django navigation creates a new document and therefore a new
+    // AudioContext. Rebuild the selected soundscape immediately from the saved
+    // preference so it keeps playing across pages. The gesture fallback only
+    // remains attached when a browser explicitly suspends autoplay.
+    resumeSelectedSound();
+    window.addEventListener("pageshow", resumeSelectedSound);
+    document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "visible") resumeSelectedSound();
+    });
+
     // Activity calendar merges saved server sessions with an immediate local marker.
     const calendarMonth = document.getElementById("calendarMonth");
     const calendarGrid = document.getElementById("calendarGrid");
@@ -685,6 +851,7 @@
     let visibleMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
     let activityByDate = {};
     let tasksByDate = {};
+    let completedTasksByDate = {};
 
     function localDateKey(date = new Date()) {
         const year = date.getFullYear();
@@ -726,11 +893,13 @@
         for (let day = 1; day <= daysInMonth; day += 1) {
             const date = new Date(year, month, day);
             const key = localDateKey(date);
-            const cell = document.createElement("span");
+            const cell = document.createElement("a");
             const sessionCount = activityByDate[key] || 0;
             const taskInfo = tasksByDate[key] || { count: 0, missed: false };
+            const completedTaskCount = completedTasksByDate[key] || 0;
             cell.className = "calendar-day";
             cell.textContent = day;
+            cell.href = `/planner/journal/?date=${key}`;
             if (key === localDateKey()) cell.classList.add("is-today");
             if (sessionCount > 0) {
                 cell.classList.add("has-session");
@@ -743,6 +912,15 @@
                 const taskText = `${taskInfo.count} planned task${taskInfo.count === 1 ? "" : "s"}`;
                 cell.title = cell.title ? `${cell.title}; ${taskText}` : taskText;
             }
+            if (completedTaskCount > 0) {
+                cell.classList.add("has-completed-task");
+                const completedText = `${completedTaskCount} completed to-do${completedTaskCount === 1 ? "" : "s"}`;
+                cell.title = cell.title ? `${cell.title}; ${completedText}` : completedText;
+            }
+            cell.setAttribute(
+                "aria-label",
+                cell.title ? `${key}: ${cell.title}. Open to-do journal.` : `${key}: Open to-do journal.`,
+            );
             calendarGrid.appendChild(cell);
         }
     }
@@ -753,6 +931,7 @@
         const localActivity = loadLocalActivity();
         activityByDate = { ...localActivity };
         tasksByDate = {};
+        completedTasksByDate = {};
         renderCalendar();
 
         try {
@@ -767,6 +946,9 @@
                 taskInfo.count += 1;
                 taskInfo.missed = taskInfo.missed || item.missed;
                 tasksByDate[item.date] = taskInfo;
+            });
+            (data.completed_tasks || []).forEach((item) => {
+                completedTasksByDate[item.date] = item.count;
             });
             renderCalendar();
         } catch (error) {
@@ -879,6 +1061,16 @@
             }
             state.taskId = Number(trigger.dataset.taskId);
             state.taskTitle = trigger.dataset.taskTitle || "Study plan";
+            state.taskContext = normalizedContext({
+                topic_id: trigger.dataset.taskTopicId,
+                section_id: trigger.dataset.taskSectionId,
+                subject_id: trigger.dataset.taskSubjectId,
+                activity_type: trigger.dataset.taskActivityType || "general",
+            });
+            state.taskContextLabel = trigger.dataset.taskContextLabel || state.taskTitle;
+            state.trackingMode = "follow";
+            state.lockedContext = null;
+            state.lockedContextLabel = "";
             saveState();
             renderTimer();
             openFocusPanel();
@@ -894,9 +1086,33 @@
         }
         state.taskId = null;
         state.taskTitle = "";
+        state.taskContext = null;
+        state.taskContextLabel = "";
         saveState();
         renderTimer();
         setMessage("");
+    });
+
+    trackingContextLock?.addEventListener("change", async () => {
+        if (trackingContextLock.checked) {
+            if (pendingContextPromise) await pendingContextPromise;
+            const candidate = trackingCandidate();
+            state.trackingMode = "locked";
+            state.lockedContext = candidate.context;
+            state.lockedContextLabel = candidate.label;
+            saveState();
+            renderTimer();
+            setMessage(`Keeping this session on ${candidate.label} while you browse.`);
+            return;
+        }
+
+        state.trackingMode = "follow";
+        state.lockedContext = null;
+        state.lockedContextLabel = "";
+        saveState();
+        renderTimer();
+        setMessage("Tracking will follow the learning page you open.");
+        await syncStudySessionContext();
     });
 
     if (new URLSearchParams(window.location.search).get("focus") === "resume") {

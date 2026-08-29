@@ -1,0 +1,51 @@
+<nav class="learning-breadcrumbs" aria-label="Learning path">
+    <ol>
+        <li>
+            <a href="{% url 'topics:home' %}" class="learning-breadcrumb-link">
+                Dashboard
+            </a>
+        </li>
+
+        {% if topic %}
+        <li>
+            {% if section or subject or current_label %}
+            <a href="{% url 'topics:topic_detail' topic.id %}" class="learning-breadcrumb-link">
+                {{ topic.title }}
+            </a>
+            {% else %}
+            <span class="learning-breadcrumb-current" aria-current="page">{{ topic.title }}</span>
+            {% endif %}
+        </li>
+        {% endif %}
+
+        {% if section %}
+        <li>
+            {% if subject or current_label %}
+            <a href="{% url 'topics:section_detail' section.id %}" class="learning-breadcrumb-link">
+                {{ section.title }}
+            </a>
+            {% else %}
+            <span class="learning-breadcrumb-current" aria-current="page">{{ section.title }}</span>
+            {% endif %}
+        </li>
+        {% endif %}
+
+        {% if subject %}
+        <li>
+            {% if current_label %}
+            <a href="{% url 'topics:subject_overview' subject.id %}" class="learning-breadcrumb-link">
+                {{ subject.title }}
+            </a>
+            {% else %}
+            <span class="learning-breadcrumb-current" aria-current="page">{{ subject.title }}</span>
+            {% endif %}
+        </li>
+        {% endif %}
+
+        {% if current_label %}
+        <li>
+            <span class="learning-breadcrumb-current" aria-current="page">{{ current_label }}</span>
+        </li>
+        {% endif %}
+    </ol>
+</nav>

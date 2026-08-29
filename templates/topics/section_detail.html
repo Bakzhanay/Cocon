@@ -5,6 +5,8 @@
 
 <div class="page-content" data-focus-stats-scope data-focus-stats-key="section-{{ section.id }}">
 
+    {% include "includes/learning_breadcrumbs.html" with topic=section.topic section=section %}
+
     <div class="page-header">
 
         <div>
@@ -137,12 +139,14 @@
         {% for subject in subjects %}
 
         <div class="subject-card subject-color-{{ subject.color|default:'default' }}"
+             id="subject-{{ subject.id }}"
              data-subject-card
              data-subject-status="{% if subject.completed %}mastered{% else %}active{% endif %}"
              data-subject-color="{{ subject.color|default:'default' }}"
              data-subject-pinned="{% if subject.is_pinned %}true{% else %}false{% endif %}"
              data-subject-order="{{ forloop.counter }}"
-             data-subject-title="{{ subject.title|lower }}">
+             data-subject-title="{{ subject.title|lower }}"
+             data-scroll-anchor="subject-{{ subject.id }}">
 
             <label class="subject-selection-check" title="Select {{ subject.title }}">
                 <input type="checkbox"
@@ -182,7 +186,9 @@
                     </form>
 
                     <a href="{% url 'topics:toggle_subject' subject.id %}"
-                       class="subject-check">
+                       class="subject-check"
+                       aria-label="{% if subject.completed %}Mark {{ subject.title }} as active{% else %}Mark {{ subject.title }} as mastered{% endif %}"
+                       title="{% if subject.completed %}Mark as active{% else %}Mark as mastered{% endif %}">
 
                         {% if subject.completed %}
                             ✅

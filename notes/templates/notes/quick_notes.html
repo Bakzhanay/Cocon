@@ -17,6 +17,19 @@
         <button type="submit">Add quick note</button>
     </form>
 
+    {% if deleted_quick_note %}
+    <aside class="quick-note-undo" role="status">
+        <div>
+            <strong>Quick note deleted</strong>
+            <p>You can restore it with its original text and pin.</p>
+        </div>
+        <form method="post" action="{% url 'notes:undo_delete_quick_note' deleted_quick_note.id %}">
+            {% csrf_token %}
+            <button type="submit">Undo</button>
+        </form>
+    </aside>
+    {% endif %}
+
     {% if quick_notes %}
     <div class="quick-notes-list">
         {% for quick_note in quick_notes %}

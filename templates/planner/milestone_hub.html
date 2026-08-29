@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% load static tz %}
+
+{% block title %}Plans & deadlines · Cocon{% endblock %}
+
+{% block content %}
+<div class="planner-hub-page">
+    <nav class="learning-breadcrumbs" aria-label="Learning path">
+        <ol>
+            <li><a href="{% url 'topics:home' %}" class="learning-breadcrumb-link">Dashboard</a></li>
+            <li><span class="learning-breadcrumb-current" aria-current="page">Plans &amp; deadlines</span></li>
+        </ol>
+    </nav>
+
+    <header class="planner-hub-hero">
+        <div>
+            <span class="dashboard-eyebrow">Keep the horizon visible</span>
+            <h1>Plans &amp; deadlines</h1>
+            <p>Give larger plans enough room for details, then keep only a quiet preview on your dashboard.</p>
+        </div>
+        <div class="planner-summary-grid">
+            <div><strong>{{ active_count }}</strong><span>active</span></div>
+            <div><strong>{{ overdue_count }}</strong><span>past date</span></div>
+            <div><strong>{{ completed_count }}</strong><span>completed</span></div>
+        </div>
+    </header>
+
+    <section class="planner-create-panel" aria-labelledby="new-milestone-title">
+        <div class="planner-section-heading">
+            <div><span class="dashboard-eyebrow">Capture the full thought</span><h2 id="new-milestone-title">Add a plan</h2></div>
+        </div>
+        <form action="{% url 'planner:add_milestone' %}" method="post" class="planner-full-form" data-milestone-form>
+            {% csrf_token %}
+            <input type="hidden" name="return_to" value="milestones">
+            <label><span>Type</span><select name="kind" data-milestone-kind><option value="plan">Plan</option><option value="deadline">Deadline</option></select></label>
+            <label class="planner-title-field"><span>Title</span><input name="title" maxlength="220" placeholder="What are you working toward?" required></label>
+            <label class="planner-description-field"><span>Details <small>Optional</small></span><textarea name="description" rows="6" placeholder="Add context, steps, links, or anything you do not want to forget..."></textarea></label>
+            <label><span data-milestone-date-label>Date and time <small>Optional</small></span><input name="target_at" type="datetime-local" data-milestone-target></label>
+            <label><span>Importance</span><select name="priority"><option value="normal">Normal</option><option value="high">Important</option><option value="low">Low</option></select></label>
+            <button type="submit">Add plan</button>
+        </form>
+    </section>
+
+    <section class="planner-collection" aria-labelledby="active-plans-title">
+        <div class="planner-section-heading"><div><span class="dashboard-eyebrow">What is ahead</span><h2 id="active-plans-title">Active plans</h2></div><span>{{ active_count }}</span></div>
+        {% if active_milestones %}
+        <div class="planner-card-list">
+            {% for milestone in active_milestones %}
+            <article class="planner-card priority-{{ milestone.priority }}{% if milestone.target_has_passed %} is-date-passed{% endif %}">
+                <div class="planner-card-main">
+                    <div class="milestone-badges"><span class="milestone-kind milestone-kind-{{ milestone.kind }}">{{ milestone.get_kind_display }}</span>{% if milestone.target_has_passed %}<span class="milestone-date-passed">Date passed</span>{% endif %}<span class="planner-priority-badge">{{ milestone.get_priority_display }}</span></div>
+                    <h3>{{ milestone.title }}</h3>
+                    {% if milestone.description %}<p>{{ milestone.description|linebreaksbr }}</p>{% else %}<p class="planner-muted">No additional details.</p>{% endif %}
+                    <span class="planner-target">{% if milestone.target_at %}{% if milestone.kind == "deadline" %}Due{% else %}Planned for{% endif %} {% timezone user_timezone_name %}{{ milestone.target_at|date:"M j, Y · H:i" }}{% endtimezone %}{% else %}No date · keep it flexible{% endif %}</span>
+                </div>
+                <div class="planner-card-actions">
+                    <form method="post" action="{% url 'planner:toggle_milestone' milestone.id %}">{% csrf_token %}<input type="hidden" name="return_to" value="milestones"><button class="planner-complete-button" type="submit">Complete</button></form>
+                    <details class="planner-edit-details"><summary>Edit</summary>
+                        <form method="post" action="{% url 'planner:update_milestone' milestone.id %}" class="planner-edit-form">
+                            {% csrf_token %}<input type="hidden" name="return_to" value="milestones">
+                            <label><span>Type</span><select name="kind"><option value="plan"{% if milestone.kind == "plan" %} selected{% endif %}>Plan</option><option value="deadline"{% if milestone.kind == "deadline" %} selected{% endif %}>Deadline</option></select></label>
+                            <label><span>Title</span><input name="title" value="{{ milestone.title }}" maxlength="220" required></label>
+                            <label class="planner-edit-description"><span>Details</span><textarea name="description" rows="6">{{ milestone.description }}</textarea></label>
+                            <label><span>Date and time</span><input name="target_at" type="datetime-local" value="{{ milestone.target_local_input }}"></label>
+                            <label><span>Importance</span><select name="priority"><option value="low"{% if milestone.priority == "low" %} selected{% endif %}>Low</option><option value="normal"{% if milestone.priority == "normal" %} selected{% endif %}>Normal</option><option value="high"{% if milestone.priority == "high" %} selected{% endif %}>Important</option></select></label>
+                            <button type="submit">Save changes</button>
+                        </form>
+                    </details>
+                    <form method="post" action="{% url 'planner:delete_milestone' milestone.id %}" onsubmit="return confirm('Permanently delete this plan?');">{% csrf_token %}<input type="hidden" name="return_to" value="milestones"><button class="planner-delete-button" type="submit">Delete</button></form>
+                </div>
+            </article>
+            {% endfor %}
+        </div>
+        {% else %}<div class="dashboard-empty"><p>No active plans yet. Add something worth keeping on the horizon.</p></div>{% endif %}
+    </section>
+
+    <section class="planner-collection planner-completed-collection" aria-labelledby="completed-plans-title">
+        <div class="planner-section-heading"><div><span class="dashboard-eyebrow">What moved forward</span><h2 id="completed-plans-title">Completed history</h2></div><span>{{ completed_count }}</span></div>
+        {% if completed_milestones %}
+        <div class="planner-card-list">
+            {% for milestone in completed_milestones %}
+            <article class="planner-card is-completed">
+                <div class="planner-card-main">
+                    <div class="milestone-badges"><span class="milestone-kind milestone-kind-{{ milestone.kind }}">{{ milestone.get_kind_display }}</span><span class="planner-priority-badge">{{ milestone.get_priority_display }}</span></div>
+                    <h3>{{ milestone.title }}</h3>
+                    {% if milestone.description %}<p>{{ milestone.description|linebreaksbr }}</p>{% endif %}
+                    <span class="planner-target">Completed {% timezone user_timezone_name %}{{ milestone.completed_at|date:"M j, Y · H:i" }}{% endtimezone %}</span>
+                </div>
+                <div class="planner-card-actions">
+                    <form method="post" action="{% url 'planner:toggle_milestone' milestone.id %}">{% csrf_token %}<input type="hidden" name="return_to" value="milestones"><button class="planner-restore-button" type="submit">Restore</button></form>
+                    <form method="post" action="{% url 'planner:delete_milestone' milestone.id %}" onsubmit="return confirm('Permanently delete this completed plan?');">{% csrf_token %}<input type="hidden" name="return_to" value="milestones"><button class="planner-delete-button" type="submit">Delete</button></form>
+                </div>
+            </article>
+            {% endfor %}
+        </div>
+        {% else %}<div class="dashboard-empty"><p>Completed plans will stay here as a quiet record of progress.</p></div>{% endif %}
+    </section>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}<script src="{% static 'js/dashboard_milestones.js' %}?v=3"></script>{% endblock %}

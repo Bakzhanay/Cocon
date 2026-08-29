@@ -24,6 +24,12 @@ urlpatterns = [
     ),
 
     path(
+        "section/<int:section_id>/bulk-add/",
+        views.bulk_add_section_flashcards,
+        name="bulk_add_section_flashcards",
+    ),
+
+    path(
         "edit/<int:flashcard_id>/",
         views.edit_flashcard,
         name="edit_flashcard",
@@ -51,6 +57,12 @@ urlpatterns = [
         "subject/<int:subject_id>/add/",
         views.add_subject_flashcard,
         name="add_subject_flashcard",
+    ),
+
+    path(
+        "subject/<int:subject_id>/bulk-add/",
+        views.bulk_add_subject_flashcards,
+        name="bulk_add_subject_flashcards",
     ),
 
     path(

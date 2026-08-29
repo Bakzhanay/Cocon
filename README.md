@@ -5,7 +5,7 @@
 <h1 align="center">Cocon</h1>
 
 <p align="center">
-  A calm, all-in-one study workspace for turning focused time into visible progress.
+  A calm, low-stimulation study workspace built to conquer sensory overload, eliminate decision fatigue, and transform scattered focus into structured, measurable progress.
 </p>
 
 ![Cocon dashboard with focus analytics, Pomodoro timer, and study navigation](docs/images/cocon-dashboard.png)
@@ -19,61 +19,52 @@ connects them to one learning hierarchy:
 
 `Topic → Section → Subject → Notes / Flashcards`
 
-## Why Cocon
+## Why Cocon Exists
 
-Cocon was built for learners whose focus is not the problem—the difficult part
-is noticing when that focus has stayed on one area for too long while another
-goal quietly falls behind. A Pomodoro timer can count minutes, but it does not
-usually remember what those minutes were for.
+*Cocon* was created out of a personal necessity to survive learning with sensory hyper-sensitivity and executive function challenges.
 
-Cocon turns every completed focus session into structured evidence. Time spent
-on Cell Biology flashcards also contributes to Cell Biology, Biology, and IMAT,
-so the dashboard can show both progress and imbalance without tracking passive
-time spent with the website open.
+Many standard tools demand constant setup, feature overwhelming interfaces full of distracting visual noise, and push users into passive tracking where you check boxes without knowing if you actually focused. Moreover, keeping dozens of tabs, PDFs, and links open across browsers triggers immediate sensory overload, draining mental energy before studying even begins.
 
-## Product tour
+*Cocon* solves this by offering a sanctuary of quiet structure:
 
-![Animated tour of the Cocon dashboard, learning rhythm, and focus tools](docs/images/cocon-demo.gif)
+**Zero Noise, Full Calm:** A low-stimulation interface designed to protect mental energy, eliminating flashing widgets, bright clutter, and endless tabs.
 
-The demo uses fictional study data and a neutral user profile; no personal
-database or uploaded learning files are included in the repository.
+**The End of Tab Hoarding:** Instead of scattering PDFs, tutorials, and materials across separate spaces, everything lives inside a strict, intuitive hierarchy: Topic → Section → Subject → Notes / Flashcards.
 
-## What it can do
+**Active Focus Accountability:** Built-in timers and smart tracking ensure that every recorded minute represents real, active concentration rather than passive presence.
 
-- Organize topics, sections, and subjects, including pinned topics and progress.
-- Add an entire subject outline at once with an editable preview, saved
-  subtitles, card colors, duplicate protection, bulk deletion, and undo/redo.
-- Create rich notes with images and PDF attachments, plus pinned and quick notes.
-- Build flashcard decks with images, mastery state, and spaced-review scheduling.
-- Run a persistent Pomodoro timer with configurable study and break durations.
-- Attribute completed focus sessions to a topic, section, subject, notes, or
-  flashcards—even when the timer continues in another browser tab.
-- Roll completed sessions up through Topic → Section → Subject → activity,
-  with weekly pace warnings for goals that are starting to fall behind.
-- Show focus balance, streaks, goals, review backlog, recent activity, and a
-  calendar of completed sessions.
-- Create regular tasks or searchable study plans linked to a topic, section, or
-  subject. Completed matching Pomodoro sessions update the plan automatically.
-- Play looping browser-generated soundscapes without external audio files.
-- Switch between light, dark, and low-stimulation interfaces.
 
-## Built with GPT-5.6 in Codex
+## The Architecture of Learning
 
-Cocon was not created from one prompt. Its first version grew feature by feature
-with ChatGPT while I learned Django, and I used Gemini as an independent reviewer
-to challenge decisions and reveal gaps. During OpenAI Build Week, I used
-GPT-5.6 through OpenAI Codex as a codebase-wide engineering collaborator that
-helped turn those experiments into a coherent application.
+*Cocon* connects every piece of your education into a single, cohesive workflow so you never have to waste time wondering what to do next or where you put your materials:
 
-GPT-5.6 in Codex helped translate real usage feedback into scoped product changes,
-refactor connected flows, design hierarchical focus tracking and automatic plan
-progress, add safe migrations and regression tests, and verify complete user
-journeys in the browser. I remained responsible for the product idea,
-priorities, visual direction, and continuous real-world feedback.
+- Topics & Sections: High-level domains (like IMAT, Programming, Languages, or Musical Instruments) broken down into targeted sub-domains (e.g., Biology, Python, Dombra).
 
-The current repository includes 66 automated tests alongside GitHub Actions,
-fresh-database migration checks, ownership validation, and protections that keep
-local study data and uploaded files out of the public repository.
+- Subjects & Practical Execution: Step-by-step topics, syllabi, and mini-projects where you check off milestones as you build real skills.
+
+- Bulk Flashcard Creation (Build Card): Paste entire blocks of text or prompts to generate review decks instantly, bypassing the tedious single-card entry that kills learning momentum.
+
+- Plans & Deadlines: Clear priority management (Low, Normal, Important) with timezone-aware tracking for projects, goals, and exams.
+
+- Unified Journal: Automatic logging of completed tasks, Pomodoro sessions, and manual study entries, tied directly to a calendar view so you can see your daily evolution.
+
+## Analytics That Guide, Not Overwhelm
+Tracking time shouldn't feel like micromanagement. Cocon splits analytics into purpose-driven views:
+
+- **Focus by Area:** Aggregates all-time accumulated time across your topics, giving you a bird’s-eye view of your life balance. If creativity starts overshadowing core priorities, you spot the imbalance immediately and adjust.
+
+- **Flexible Timeframes:** Seamlessly switch between 7-day, 30-day, and 12-month breakdowns with interactive tooltips and hierarchy drilling (Topic → Subject → Notes).
+
+- **Manual Time Logging (Manage Time):** For moments when you are deep in a flow state without a running timer (or practicing an instrument offline), you can log or adjust time manually to keep your statistics honest.
+
+## Flashcard Spaced Repetition
+Studying languages or complex theory requires reliable memory loops:
+
+- **Again** returns cards instantly to the current queue without wait timers.
+
+- Overdue review dates display clearly as Review due, and mastered items clean up automatically.
+
+- Active rating badges (e.g., **Learning · Easy**) show directly on cards so you always know your retention state.
 
 ## Tech stack
 

@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+
+{% block title %}To-do journal · Cocon{% endblock %}
+
+{% block content %}
+<div class="task-journal-page">
+    <nav class="learning-breadcrumbs" aria-label="Learning path">
+        <ol>
+            <li><a href="{% url 'topics:home' %}" class="learning-breadcrumb-link">Dashboard</a></li>
+            <li><span class="learning-breadcrumb-current" aria-current="page">To-do journal</span></li>
+        </ol>
+    </nav>
+
+    <header class="task-journal-hero">
+        <div>
+            <span class="dashboard-eyebrow">A record of what moved forward</span>
+            <h1>To-do journal</h1>
+            <p>Completed plans leave the active list, but their results stay here.</p>
+        </div>
+        <div class="task-journal-total">
+            <strong>{{ completed_tasks_total }}</strong>
+            <span>completed task{{ completed_tasks_total|pluralize }}</span>
+        </div>
+    </header>
+
+    <div class="task-journal-layout">
+        <section class="task-journal-calendar" aria-labelledby="journal-calendar-title">
+            <div class="task-journal-calendar-heading">
+                <a href="?date={{ previous_month_date }}" aria-label="Previous month">‹</a>
+                <h2 id="journal-calendar-title">{{ month_label }}</h2>
+                <a href="?date={{ next_month_date }}" aria-label="Next month">›</a>
+            </div>
+            <div class="task-journal-weekdays" aria-hidden="true">
+                <span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span><span>Su</span>
+            </div>
+            <div class="task-journal-calendar-grid">
+                {% for week in calendar_weeks %}
+                    {% for day in week %}
+                    <a
+                        href="?date={{ day.date_iso }}"
+                        class="task-journal-day{% if not day.in_month %} is-outside{% endif %}{% if day.is_today %} is-today{% endif %}{% if day.is_selected %} is-selected{% endif %}{% if day.completed_count %} has-completions{% endif %}"
+                        aria-label="{{ day.date|date:'F j, Y' }}{% if day.completed_count %}: {{ day.completed_count }} completed task{{ day.completed_count|pluralize }}{% endif %}"
+                    >
+                        <span>{{ day.day }}</span>
+                        {% if day.completed_count %}<small>{{ day.completed_count }}</small>{% endif %}
+                    </a>
+                    {% endfor %}
+                {% endfor %}
+            </div>
+            <p class="task-journal-calendar-hint"><span></span> Days with completed tasks</p>
+        </section>
+
+        <section class="task-journal-day-panel" aria-labelledby="journal-day-title">
+            <div class="task-journal-day-heading">
+                <div>
+                    <span class="dashboard-eyebrow">What you completed</span>
+                    <h2 id="journal-day-title">{{ selected_date|date:"l, F j" }}</h2>
+                </div>
+                <span>{{ selected_tasks|length }} result{{ selected_tasks|length|pluralize }}</span>
+            </div>
+
+            {% if selected_tasks %}
+            <div class="task-journal-entries">
+                {% for task in selected_tasks %}
+                <article class="task-journal-entry" id="journal-task-{{ task.id }}">
+                    <div class="task-journal-entry-icon" aria-hidden="true">✓</div>
+                    <div class="task-journal-entry-body">
+                        <div class="task-journal-entry-heading">
+                            <div>
+                                {% if task.is_study_task %}<span class="task-study-badge">Study plan</span>{% endif %}
+                                <h3>{{ task.title }}</h3>
+                            </div>
+                            <time datetime="{{ task.completed_at|date:'c' }}">{{ task.completed_local|time:"H:i" }}</time>
+                        </div>
+
+                        <div class="task-journal-meta">
+                            {% if task.is_study_task %}
+                                <span>{{ task.study_context_label }}</span>
+                                <span>{{ task.focused_minutes }} / {{ task.target_minutes }} focused min</span>
+                                <span>{% if task.completed_by_focus %}Completed by focus time{% else %}Completed manually{% endif %}</span>
+                            {% else %}
+                                <span>{{ task.get_priority_display }} priority</span>
+                                {% if task.due_date %}<span>Planned for {{ task.due_date|date:"M j" }}</span>{% endif %}
+                            {% endif %}
+                        </div>
+
+                        {% if task.completion_note %}
+                        <blockquote class="task-journal-reflection">{{ task.completion_note|linebreaksbr }}</blockquote>
+                        {% else %}
+                        <p class="task-journal-no-reflection">No reflection added yet.</p>
+                        {% endif %}
+
+                        <div class="task-journal-entry-actions">
+                            <details class="task-journal-reflection-editor">
+                                <summary>{% if task.completion_note %}Edit reflection{% else %}Add reflection{% endif %}</summary>
+                                <form method="post" action="{% url 'planner:update_task_reflection' task.id %}">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="return_to" value="journal">
+                                    <input type="hidden" name="journal_date" value="{{ selected_date|date:'Y-m-d' }}">
+                                    <textarea name="completion_note" maxlength="2000" rows="4" placeholder="What did you accomplish?">{{ task.completion_note }}</textarea>
+                                    <button type="submit">Save reflection</button>
+                                </form>
+                            </details>
+                            <form method="post" action="{% url 'planner:toggle_task' task.id %}">
+                                {% csrf_token %}
+                                <input type="hidden" name="return_to" value="journal">
+                                <input type="hidden" name="journal_date" value="{{ selected_date|date:'Y-m-d' }}">
+                                <button type="submit" class="task-journal-restore">Restore to to-do</button>
+                            </form>
+                            <form method="post" action="{% url 'planner:delete_task' task.id %}" onsubmit="return confirm('Permanently delete this journal entry?');">
+                                {% csrf_token %}
+                                <input type="hidden" name="return_to" value="journal">
+                                <input type="hidden" name="journal_date" value="{{ selected_date|date:'Y-m-d' }}">
+                                <button type="submit" class="task-journal-delete">Delete</button>
+                            </form>
+                        </div>
+                    </div>
+                </article>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="task-journal-empty">
+                <span aria-hidden="true">○</span>
+                <h3>No completed tasks on this day</h3>
+                <p>Choose another highlighted date or return to your to-do list.</p>
+                <a href="{% url 'topics:home' %}#dashboard-tasks">Open to-do list</a>
+            </div>
+            {% endif %}
+        </section>
+    </div>
+</div>
+{% endblock %}

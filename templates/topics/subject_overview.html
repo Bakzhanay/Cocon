@@ -1,11 +1,10 @@
 {% extends "base.html" %}
+{% load static %}
 
 {% block content %}
 
 <div class="topic-page subject-overview-page">
-    <a href="{% url 'topics:section_detail' subject.section.id %}" class="back-link">
-        &larr; Back to {{ subject.section.title }}
-    </a>
+    {% include "includes/learning_breadcrumbs.html" with topic=subject.section.topic section=subject.section subject=subject %}
 
     <div class="topic-page-header subject-overview-header">
         <div>
@@ -29,8 +28,92 @@
             <span>Total focused time</span>
             <strong>{{ subject.focus_duration }}</strong>
         </div>
-        <p>Only completed Pomodoro sessions are counted.</p>
+        <div class="subject-overview-total-actions">
+            <p>Timer sessions and your editable manual entries are counted.</p>
+            <button class="secondary-btn" type="button" data-open-manual-time>Manage time</button>
+        </div>
     </section>
+
+    <details class="manual-time-manager"
+             id="manual-focus-time"
+             data-scroll-anchor="manual-focus-time"
+             {% if manage_time_open %}open{% endif %}>
+        <summary>
+            <span>
+                <strong>Manage focused time</strong>
+                <small>Add estimates for study done without the timer, or correct an earlier entry.</small>
+            </span>
+            <span class="manual-time-summary-totals">
+                Timer {{ timer_focus_duration }} &middot; Manual {{ manual_focus_duration }}
+            </span>
+        </summary>
+
+        <div class="manual-time-manager-body">
+            <form method="post"
+                  action="{% url 'topics:log_subject_time' subject.id %}"
+                  class="manual-time-add-form">
+                {% csrf_token %}
+                <div>
+                    <strong>Add time without the timer</strong>
+                    <p>An estimate is fine. You can change or remove it later.</p>
+                </div>
+                <label>
+                    <span>Date</span>
+                    <input type="date" name="focus_date" value="{{ manual_focus_today|date:'Y-m-d' }}" max="{{ manual_focus_today|date:'Y-m-d' }}" required>
+                </label>
+                <label>
+                    <span>Hours</span>
+                    <input type="number" name="hours" min="0" max="24" step="1" value="0" inputmode="numeric">
+                </label>
+                <label>
+                    <span>Minutes</span>
+                    <input type="number" name="minutes" min="0" max="59" step="1" placeholder="e.g. 30" inputmode="numeric">
+                </label>
+                <button type="submit" class="primary-btn">Add time</button>
+            </form>
+
+            <div class="manual-time-history">
+                <div class="manual-time-history-heading">
+                    <strong>Manual entries</strong>
+                    <span>Timer sessions stay read-only.</span>
+                </div>
+
+                {% for entry in manual_focus_entries %}
+                <div class="manual-time-entry">
+                    <form method="post"
+                          action="{% url 'topics:edit_subject_time' subject.id entry.id %}"
+                          class="manual-time-entry-form">
+                        {% csrf_token %}
+                        <span class="manual-time-entry-duration">{{ entry.manual_duration }}</span>
+                        <label>
+                            <span>Date</span>
+                            <input type="date" name="focus_date" value="{{ entry.manual_date|date:'Y-m-d' }}" max="{{ manual_focus_today|date:'Y-m-d' }}" required>
+                        </label>
+                        <label>
+                            <span>Hours</span>
+                            <input type="number" name="hours" min="0" max="24" step="1" value="{{ entry.manual_hours }}" inputmode="numeric">
+                        </label>
+                        <label>
+                            <span>Minutes</span>
+                            <input type="number" name="minutes" min="0" max="59" step="1" value="{{ entry.manual_minutes }}" inputmode="numeric">
+                        </label>
+                        <button type="submit" class="secondary-btn">Save</button>
+                    </form>
+                    <form method="post"
+                          action="{% url 'topics:delete_subject_time' subject.id entry.id %}"
+                          class="manual-time-delete-form">
+                        {% csrf_token %}
+                        <button type="submit" class="danger-btn" aria-label="Delete {{ entry.manual_duration }} manual entry">Delete</button>
+                    </form>
+                </div>
+                {% empty %}
+                <div class="manual-time-empty">
+                    No manual time yet. Completed Pomodoro sessions are already counted automatically.
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </details>
 
     <div class="subject-workspace-grid">
         <div class="subject-workspace-card subject-workspace-general">
@@ -63,8 +146,12 @@
 
     <div class="subject-overview-hint">
         <strong>How tracking works</strong>
-        <p>Start the timer here for general {{ subject.title }} study, or open Notes or Flashcards to record that activity separately.</p>
+        <p>Start the timer here for general {{ subject.title }} study, open Notes or Flashcards to record that activity separately, or use Manage time for study completed without the timer. The mastered checkbox only marks this subject as complete.</p>
     </div>
 </div>
 
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{% static 'js/manual_time_manager.js' %}?v=1"></script>
 {% endblock %}

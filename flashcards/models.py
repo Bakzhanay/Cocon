@@ -42,6 +42,24 @@ class Flashcard(models.Model):
     default=False,
     )
 
+    REVIEW_STATE_CHOICES = [
+        ("again", "Again"),
+        ("hard", "Hard"),
+        ("good", "Good"),
+        ("easy", "Easy"),
+    ]
+
+    # The manual checkbox still controls whether a card is mastered.  This
+    # separate value records the latest review result while the card remains
+    # in the learning queue, so a learner can see which cards feel easy or
+    # difficult without conflating review progress with mastery.
+    review_state = models.CharField(
+        max_length=5,
+        choices=REVIEW_STATE_CHOICES,
+        blank=True,
+        default="",
+    )
+
     last_reviewed_at = models.DateTimeField(null=True, blank=True)
 
     next_review_at = models.DateTimeField(null=True, blank=True, db_index=True)
@@ -59,6 +77,38 @@ class Flashcard(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     updated_at = models.DateTimeField(auto_now=True)
+
+    @property
+    def hard_interval_label(self):
+        if not self.interval_days:
+            return "10m"
+        return f"{max(1, round(self.interval_days * 1.2))}d+"
+
+    @property
+    def good_interval_label(self):
+        if not self.interval_days:
+            return "1d+"
+        if self.interval_days == 1 and self.repetitions <= 2:
+            return "3d+"
+        return f"{max(1, round(self.interval_days * float(self.ease_factor)))}d+"
+
+    @property
+    def easy_interval_label(self):
+        if not self.interval_days:
+            return "3d+"
+        return f"{max(1, round(self.interval_days * float(self.ease_factor) * 1.3))}d+"
+
+    @property
+    def review_schedule_label(self):
+        """Return a calm, current label instead of a stale past date."""
+        if self.learned or not self.next_review_at:
+            return ""
+        from django.utils import timezone
+
+        if self.next_review_at <= timezone.now():
+            return "Review due"
+        local_review = timezone.localtime(self.next_review_at)
+        return f"Next {local_review.strftime('%b')} {local_review.day}"
 
     class Meta:
         constraints = [

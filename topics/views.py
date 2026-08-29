@@ -1,6 +1,6 @@
 from django.utils import timezone
 from django.db.models import Sum
-from study.models import StudySession
+from study.models import StudySession, StudySessionSegment
 from study.analytics import aggregate_sessions, build_focus_analytics, format_duration
 from datetime import datetime, time, timedelta
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
@@ -26,13 +26,33 @@ from .forms import TopicForm, SectionForm, SubjectForm, BulkSubjectForm
 
 from flashcards.models import Flashcard
 from notes.models import Note, QuickNote
-from planner.models import Task
+from planner.models import Milestone, Task
 from users.models import UserPreferences
 
 from django.db.models import Q
 
 
-DASHBOARD_WIDGETS = ("tasks", "quick_notes", "pinned_notes")
+DASHBOARD_WIDGETS = ("tasks", "milestones", "quick_notes", "pinned_notes")
+RHYTHM_PERIODS = {
+    "7d": {
+        "label": "Last 7 days",
+        "aria_label": "Focus minutes for the last seven days",
+    },
+    "30d": {
+        "label": "Last 30 days",
+        "aria_label": "Focus minutes for the last thirty days",
+    },
+    "year": {
+        "label": "Last 12 months",
+        "aria_label": "Focus minutes for the last twelve months",
+    },
+}
+RHYTHM_ACTIVITY_LABELS = {
+    "general": "General study",
+    "notes": "Notes",
+    "flashcards": "Flashcards",
+    "reading": "Reading",
+}
 
 
 def _dashboard_widget_preferences(preferences, field_name):
@@ -41,6 +61,179 @@ def _dashboard_widget_preferences(preferences, field_name):
     if not isinstance(saved_widgets, list):
         return []
     return [widget for widget in DASHBOARD_WIDGETS if widget in saved_widgets]
+
+
+def _shift_month(month_start, offset):
+    """Return the first day of the month ``offset`` months away."""
+    month_index = month_start.year * 12 + month_start.month - 1 + offset
+    year, zero_based_month = divmod(month_index, 12)
+    return month_start.replace(year=year, month=zero_based_month + 1, day=1)
+
+
+def _build_focus_rhythm(completed_sessions, user_timezone, today, period):
+    """Build dashboard chart buckets without changing stored session data."""
+    if period not in RHYTHM_PERIODS:
+        period = "7d"
+
+    if period == "year":
+        current_month = today.replace(day=1)
+        bucket_dates = [_shift_month(current_month, offset) for offset in range(-11, 1)]
+        period_start = bucket_dates[0]
+        labels = [month.strftime("%b") for month in bucket_dates]
+        bucket_key = lambda local_day: local_day.replace(day=1)
+    else:
+        day_count = 30 if period == "30d" else 7
+        period_start = today - timedelta(days=day_count - 1)
+        bucket_dates = [period_start + timedelta(days=offset) for offset in range(day_count)]
+        labels = [
+            day.strftime("%d") if period == "30d" else day.strftime("%a")
+            for day in bucket_dates
+        ]
+        bucket_key = lambda local_day: local_day
+
+    period_start_at = datetime.combine(period_start, time.min, tzinfo=user_timezone)
+    tomorrow_start = datetime.combine(today + timedelta(days=1), time.min, tzinfo=user_timezone)
+    period_sessions = completed_sessions.filter(
+        ended_at__gte=period_start_at,
+        ended_at__lt=tomorrow_start,
+    )
+    totals = {}
+    for ended_at, duration in period_sessions.values_list("ended_at", "duration_seconds"):
+        local_day = ended_at.astimezone(user_timezone).date()
+        key = bucket_key(local_day)
+        totals[key] = totals.get(key, 0) + duration
+
+    breakdown_totals = {}
+
+    def add_breakdown_row(
+        ended_at,
+        seconds,
+        topic_title,
+        section_title,
+        subject_title,
+        activity_type,
+    ):
+        if not ended_at or not seconds:
+            return
+        local_day = ended_at.astimezone(user_timezone).date()
+        key = bucket_key(local_day)
+        area_label = topic_title or "General study"
+        activity_label = RHYTHM_ACTIVITY_LABELS.get(activity_type, "General study")
+        if subject_title:
+            context_label = f"{subject_title} / {activity_label}"
+        elif section_title:
+            context_label = f"{section_title} / {activity_label}"
+        elif topic_title:
+            context_label = f"Topic-level / {activity_label}"
+        else:
+            context_label = activity_label
+
+        area = breakdown_totals.setdefault(key, {}).setdefault(
+            area_label,
+            {"seconds": 0, "contexts": {}},
+        )
+        area["seconds"] += seconds
+        area["contexts"][context_label] = (
+            area["contexts"].get(context_label, 0) + seconds
+        )
+
+    segment_rows = list(
+        StudySessionSegment.objects.filter(session__in=period_sessions).values(
+            "session_id",
+            "session__ended_at",
+            "duration_seconds",
+            "topic__title",
+            "topic_title",
+            "section__title",
+            "section_title",
+            "subject__title",
+            "subject_title",
+            "activity_type",
+        )
+    )
+    segmented_session_ids = {row["session_id"] for row in segment_rows}
+    for row in segment_rows:
+        add_breakdown_row(
+            row["session__ended_at"],
+            row["duration_seconds"],
+            row["topic__title"] or row["topic_title"],
+            row["section__title"] or row["section_title"],
+            row["subject__title"] or row["subject_title"],
+            row["activity_type"],
+        )
+
+    legacy_rows = period_sessions.exclude(id__in=segmented_session_ids).values(
+        "ended_at",
+        "duration_seconds",
+        "topic__title",
+        "topic_title",
+        "section__title",
+        "section_title",
+        "subject__title",
+        "subject_title",
+        "activity_type",
+    )
+    for row in legacy_rows:
+        add_breakdown_row(
+            row["ended_at"],
+            row["duration_seconds"],
+            row["topic__title"] or row["topic_title"],
+            row["section__title"] or row["section_title"],
+            row["subject__title"] or row["subject_title"],
+            row["activity_type"],
+        )
+
+    max_bucket_seconds = max([*totals.values(), 1])
+    chart = []
+    for bucket_date, label in zip(bucket_dates, labels):
+        seconds = totals.get(bucket_date, 0)
+        breakdown = []
+        for area_label, area in sorted(
+            breakdown_totals.get(bucket_date, {}).items(),
+            key=lambda item: (-item[1]["seconds"], item[0].lower()),
+        ):
+            contexts = [
+                {
+                    "label": context_label,
+                    "seconds": context_seconds,
+                    "duration": format_duration(context_seconds),
+                }
+                for context_label, context_seconds in sorted(
+                    area["contexts"].items(),
+                    key=lambda item: (-item[1], item[0].lower()),
+                )
+            ]
+            breakdown.append({
+                "label": area_label,
+                "seconds": area["seconds"],
+                "duration": format_duration(area["seconds"]),
+                "contexts": contexts,
+            })
+        chart.append({
+            "date": bucket_date,
+            "label": label,
+            "minutes": round(seconds / 60),
+            "height": max(4, round((seconds / max_bucket_seconds) * 100)) if seconds else 4,
+            "display_date": (
+                bucket_date.strftime("%B %Y")
+                if period == "year"
+                else bucket_date.strftime("%B %d, %Y").replace(" 0", " ")
+            ),
+            "breakdown": breakdown,
+            "is_current": (
+                bucket_date == today.replace(day=1)
+                if period == "year"
+                else bucket_date == today
+            ),
+        })
+
+    return {
+        "period": period,
+        "label": RHYTHM_PERIODS[period]["label"],
+        "aria_label": RHYTHM_PERIODS[period]["aria_label"],
+        "chart": chart,
+        "total_minutes": round(sum(totals.values()) / 60),
+    }
 
 
 def _study_session_resume_url(session):
@@ -74,6 +267,61 @@ def _focus_snapshot(user):
         status="completed",
     )
     return aggregate_sessions(sessions)
+
+
+def _user_timezone(user):
+    preferences, _ = UserPreferences.objects.get_or_create(user=user)
+    try:
+        return ZoneInfo(preferences.timezone)
+    except ZoneInfoNotFoundError:
+        return ZoneInfo("UTC")
+
+
+def _manual_focus_duration(request):
+    try:
+        hours = int(request.POST.get("hours") or 0)
+        minutes = int(request.POST.get("minutes") or 0)
+    except (TypeError, ValueError) as error:
+        raise ValueError("Enter time using whole hours and minutes.") from error
+
+    total_minutes = hours * 60 + minutes
+    if (
+        hours < 0
+        or minutes < 0
+        or minutes > 59
+        or not 1 <= total_minutes <= 24 * 60
+    ):
+        raise ValueError(
+            "Enter between 1 minute and 24 hours. Minutes must be from 0 to 59."
+        )
+    return total_minutes * 60
+
+
+def _manual_focus_ended_at(request):
+    user_timezone = _user_timezone(request.user)
+    now = timezone.now().astimezone(user_timezone)
+    raw_date = (request.POST.get("focus_date") or "").strip()
+    if not raw_date:
+        selected_date = now.date()
+    else:
+        try:
+            selected_date = datetime.strptime(raw_date, "%Y-%m-%d").date()
+        except ValueError as error:
+            raise ValueError("Choose a valid date.") from error
+    if selected_date > now.date():
+        raise ValueError("Manual focus time cannot be added in the future.")
+    return datetime.combine(
+        selected_date,
+        now.time().replace(tzinfo=None),
+        tzinfo=user_timezone,
+    )
+
+
+def _manual_focus_redirect(subject):
+    return (
+        f"{reverse('topics:subject_overview', args=[subject.id])}"
+        "?manage_time=1#manual-focus-time"
+    )
 
 
 def _add_focus_to_sections(sections, snapshot):
@@ -460,7 +708,6 @@ def section_detail(request, section_id):
     _add_focus_to_subjects(subjects, focus_snapshot)
     section.focus_seconds = focus_snapshot["totals"]["section"].get(section.id, 0)
     section.focus_duration = format_duration(section.focus_seconds)
-
     return render(
         request,
         "topics/section_detail.html",
@@ -471,7 +718,7 @@ def section_detail(request, section_id):
             "completed_subjects": completed_subjects,
             "subjects_progress": round((completed_subjects / total_subjects) * 100) if total_subjects else 0,
             "subject_color_choices": Subject.COLOR_CHOICES,
-            "notes": section.notes.all().order_by("-updated_at"),
+            "notes": section.notes.all().order_by("-is_pinned", "-updated_at", "-id"),
             "current_topic": section.topic.id,
             "current_section": section.id,
             "can_undo_subject_action": section.subject_history_actions.filter(
@@ -637,7 +884,7 @@ def subject_detail(request, subject_id):
         "topics/subject_detail.html",
         {
             "subject": subject,
-            "notes": subject.notes.all().order_by("-updated_at"),
+            "notes": subject.notes.all().order_by("-is_pinned", "-updated_at", "-id"),
             "current_topic": subject.section.topic.id,
             "current_section": subject.section.id,
             "current_subject": subject.id,
@@ -655,6 +902,33 @@ def subject_overview(request, subject_id):
     )
     focus_snapshot = _focus_snapshot(request.user)
     _add_focus_to_subjects([subject], focus_snapshot)
+    completed_sessions = StudySession.objects.filter(
+        user=request.user,
+        completed=True,
+        status="completed",
+    )
+    timer_snapshot = aggregate_sessions(
+        completed_sessions.filter(entry_source="timer")
+    )
+    manual_snapshot = aggregate_sessions(
+        completed_sessions.filter(entry_source="manual")
+    )
+    timer_seconds = timer_snapshot["totals"]["subject"].get(subject.id, 0)
+    manual_seconds = manual_snapshot["totals"]["subject"].get(subject.id, 0)
+    user_timezone = _user_timezone(request.user)
+    manual_focus_entries = list(
+        completed_sessions.filter(
+            entry_source="manual",
+            subject=subject,
+        ).order_by("-ended_at", "-id")
+    )
+    for entry in manual_focus_entries:
+        entry.manual_hours, entry.manual_minutes = divmod(
+            round(entry.duration_seconds / 60),
+            60,
+        )
+        entry.manual_date = entry.ended_at.astimezone(user_timezone).date()
+        entry.manual_duration = format_duration(entry.duration_seconds)
 
     return render(
         request,
@@ -663,6 +937,11 @@ def subject_overview(request, subject_id):
             "subject": subject,
             "note_count": subject.notes.count(),
             "flashcard_count": subject.flashcards.count(),
+            "timer_focus_duration": format_duration(timer_seconds),
+            "manual_focus_duration": format_duration(manual_seconds),
+            "manual_focus_entries": manual_focus_entries,
+            "manual_focus_today": timezone.now().astimezone(user_timezone).date(),
+            "manage_time_open": request.GET.get("manage_time") == "1",
             "current_topic": subject.section.topic_id,
             "current_section": subject.section_id,
             "current_subject": subject.id,
@@ -840,12 +1119,128 @@ def toggle_subject(request, subject_id):
     )
 
     subject.completed = not subject.completed
-    subject.save()
+    subject.save(update_fields=["completed"])
 
-    return redirect(
-        "topics:section_detail",
-        section_id=subject.section.id,
+    section_url = reverse("topics:section_detail", args=[subject.section_id])
+    return redirect(f"{section_url}#subject-{subject.id}")
+
+
+@login_required
+@require_POST
+def log_subject_time(request, subject_id):
+    subject = get_object_or_404(
+        Subject.objects.select_related("section", "section__topic"),
+        id=subject_id,
+        section__topic__user=request.user,
     )
+    try:
+        duration_seconds = _manual_focus_duration(request)
+        ended_at = _manual_focus_ended_at(request)
+    except ValueError as error:
+        messages.error(request, str(error))
+        return redirect(_manual_focus_redirect(subject))
+
+    StudySession.objects.create(
+        user=request.user,
+        topic=subject.section.topic,
+        section=subject.section,
+        subject=subject,
+        started_at=ended_at - timedelta(seconds=duration_seconds),
+        ended_at=ended_at,
+        duration_seconds=duration_seconds,
+        planned_duration_seconds=0,
+        paused_seconds=0,
+        status="completed",
+        activity_type="general",
+        entry_source="manual",
+        topic_title=subject.section.topic.title,
+        section_title=subject.section.title,
+        subject_title=subject.title,
+        completed=True,
+    )
+
+    messages.success(
+        request,
+        f"Added {format_duration(duration_seconds)} to {subject.title}.",
+    )
+    return redirect(_manual_focus_redirect(subject))
+
+
+@login_required
+@require_POST
+def edit_subject_time(request, subject_id, session_id):
+    subject = get_object_or_404(
+        Subject.objects.select_related("section", "section__topic"),
+        id=subject_id,
+        section__topic__user=request.user,
+    )
+    session = get_object_or_404(
+        StudySession,
+        id=session_id,
+        user=request.user,
+        subject=subject,
+        entry_source="manual",
+        completed=True,
+        status="completed",
+    )
+    try:
+        duration_seconds = _manual_focus_duration(request)
+        ended_at = _manual_focus_ended_at(request)
+    except ValueError as error:
+        messages.error(request, str(error))
+        return redirect(_manual_focus_redirect(subject))
+
+    session.duration_seconds = duration_seconds
+    session.ended_at = ended_at
+    session.started_at = ended_at - timedelta(seconds=duration_seconds)
+    session.topic = subject.section.topic
+    session.section = subject.section
+    session.subject = subject
+    session.topic_title = subject.section.topic.title
+    session.section_title = subject.section.title
+    session.subject_title = subject.title
+    session.save(update_fields=[
+        "duration_seconds",
+        "ended_at",
+        "started_at",
+        "topic",
+        "section",
+        "subject",
+        "topic_title",
+        "section_title",
+        "subject_title",
+    ])
+    messages.success(
+        request,
+        f"Updated manual time for {subject.title} to {format_duration(duration_seconds)}.",
+    )
+    return redirect(_manual_focus_redirect(subject))
+
+
+@login_required
+@require_POST
+def delete_subject_time(request, subject_id, session_id):
+    subject = get_object_or_404(
+        Subject,
+        id=subject_id,
+        section__topic__user=request.user,
+    )
+    session = get_object_or_404(
+        StudySession,
+        id=session_id,
+        user=request.user,
+        subject=subject,
+        entry_source="manual",
+        completed=True,
+        status="completed",
+    )
+    deleted_duration = format_duration(session.duration_seconds)
+    session.delete()
+    messages.success(
+        request,
+        f"Removed {deleted_duration} of manual time from {subject.title}.",
+    )
+    return redirect(_manual_focus_redirect(subject))
 
 @login_required
 def search(request):
@@ -939,14 +1334,17 @@ def dashboard(request):
     tomorrow_start = today_start + timedelta(days=1)
     week_start_at = datetime.combine(week_start, time.min, tzinfo=user_timezone)
     week_end_at = week_start_at + timedelta(days=7)
-    chart_start = today - timedelta(days=6)
-    chart_start_at = datetime.combine(chart_start, time.min, tzinfo=user_timezone)
 
     completed_sessions = StudySession.objects.filter(
         user=request.user,
         completed=True,
         status="completed",
     )
+    dashboard_recent_sessions = completed_sessions
+    if preferences.dashboard_activity_hidden_before:
+        dashboard_recent_sessions = dashboard_recent_sessions.filter(
+            ended_at__gt=preferences.dashboard_activity_hidden_before,
+        )
     today_seconds = completed_sessions.filter(
         ended_at__gte=today_start,
         ended_at__lt=tomorrow_start,
@@ -957,26 +1355,12 @@ def dashboard(request):
     )
     week_seconds = week_sessions.aggregate(total=Sum("duration_seconds"))["total"] or 0
 
-    chart_sessions = completed_sessions.filter(
-        ended_at__gte=chart_start_at,
-        ended_at__lt=tomorrow_start,
+    rhythm = _build_focus_rhythm(
+        completed_sessions,
+        user_timezone,
+        today,
+        request.GET.get("rhythm", "7d"),
     )
-    daily_totals = {}
-    for ended_at, duration in chart_sessions.values_list("ended_at", "duration_seconds"):
-        local_day = ended_at.astimezone(user_timezone).date()
-        daily_totals[local_day] = daily_totals.get(local_day, 0) + duration
-    weekly_chart = []
-    max_daily_seconds = max([*daily_totals.values(), 1])
-    for offset in range(7):
-        day = chart_start + timedelta(days=offset)
-        seconds = daily_totals.get(day, 0)
-        weekly_chart.append({
-            "date": day,
-            "label": day.strftime("%a"),
-            "minutes": round(seconds / 60),
-            "height": max(4, round((seconds / max_daily_seconds) * 100)) if seconds else 4,
-            "is_today": day == today,
-        })
 
     completed_days = sorted({
         ended_at.astimezone(user_timezone).date()
@@ -1009,7 +1393,7 @@ def dashboard(request):
 
     focus = build_focus_analytics(
         request.user,
-        week_sessions,
+        completed_sessions,
         week_sessions,
         now,
         week_start_at,
@@ -1028,6 +1412,30 @@ def dashboard(request):
         .order_by("-ended_at")
         .first()
     )
+    milestone_priority_order = {"high": 0, "normal": 1, "low": 2}
+    milestones = list(Milestone.objects.filter(user=request.user, completed=False))
+    milestones.sort(
+        key=lambda milestone: (
+            milestone_priority_order.get(milestone.priority, 1),
+            milestone.target_at is None,
+            milestone.target_at or now,
+            -milestone.id,
+        )
+    )
+    task_priority_order = {"high": 0, "normal": 1, "low": 2}
+    tasks = list(
+        Task.objects.filter(user=request.user, completed=False)
+        .select_related("topic", "section", "subject")
+    )
+    tasks.sort(
+        key=lambda task: (
+            not task.is_pinned,
+            task_priority_order.get(task.priority, 1),
+            task.due_date is None,
+            task.due_date or today,
+            task.created_at,
+        )
+    )
     today_goal = max(1, preferences.daily_focus_goal_minutes)
     weekly_goal = max(1, preferences.weekly_focus_goal_minutes)
     context = {
@@ -1042,13 +1450,19 @@ def dashboard(request):
         "week_sessions_count": week_sessions.count(),
         "streak": streak,
         "due_flashcards": due_flashcards,
-        "weekly_chart": weekly_chart,
+        "weekly_chart": rhythm["chart"],
+        "rhythm_chart": rhythm["chart"],
+        "rhythm_period": rhythm["period"],
+        "rhythm_label": rhythm["label"],
+        "rhythm_aria_label": rhythm["aria_label"],
+        "rhythm_total_minutes": rhythm["total_minutes"],
         "focus_by_topic": focus_by_topic[:6],
         "needs_attention": needs_attention[:4],
         "recent_session": recent_session,
         "recent_session_resume_url": _study_session_resume_url(recent_session),
         "recent_session_minutes": round(recent_session.duration_seconds / 60) if recent_session else 0,
-        "recent_sessions": completed_sessions.select_related("topic", "section", "subject").order_by("-ended_at")[:6],
+        "recent_sessions": dashboard_recent_sessions.select_related("topic", "section", "subject").order_by("-ended_at")[:6],
+        "has_focus_history": completed_sessions.exists(),
         "recent_notes": Note.objects.filter(
             Q(section__isnull=False) | Q(subject__is_deleted=False),
             owner=request.user,
@@ -1058,12 +1472,17 @@ def dashboard(request):
             owner=request.user,
             is_pinned=True,
         ).order_by("-updated_at")[:5],
-        "quick_notes": QuickNote.objects.filter(owner=request.user).order_by("-is_pinned", "-updated_at")[:3],
-        "tasks": Task.objects.filter(user=request.user)
-        .select_related("topic", "section", "subject")
-        .order_by("completed", "due_date", "-created_at")[:10],
+        "quick_notes": QuickNote.objects.filter(
+            owner=request.user,
+            deleted_at__isnull=True,
+        ).order_by("-is_pinned", "-updated_at")[:3],
+        "tasks": tasks[:10],
+        "milestones": milestones[:5],
+        "milestone_active_total": len(milestones),
+        "milestone_more_count": max(0, len(milestones) - 5),
         "task_topics": user_topics,
         "today": today,
+        "user_timezone_name": getattr(user_timezone, "key", "UTC"),
         "pinned_dashboard_widgets": pinned_dashboard_widgets,
         "expanded_dashboard_widgets": expanded_dashboard_widgets,
         "has_pinned_dashboard_widgets": bool(pinned_dashboard_widgets),

@@ -10,6 +10,8 @@ from .models import Note, NoteImage, NotePDF, QuickNote
 from .forms import NoteForm
 
 from topics.models import Subject, Section
+from django.urls import reverse
+from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 @login_required
@@ -283,15 +285,32 @@ def _quick_note_redirect(request):
 
 @login_required
 def quick_notes(request):
+    deleted_quick_note = None
+    deleted_note_id = request.GET.get("quick_note_deleted", "")
+    if deleted_note_id.isdigit():
+        deleted_quick_note = QuickNote.objects.filter(
+            id=int(deleted_note_id),
+            owner=request.user,
+            deleted_at__isnull=False,
+        ).first()
     return render(request, "notes/quick_notes.html", {
-        "quick_notes": QuickNote.objects.filter(owner=request.user),
+        "quick_notes": QuickNote.objects.filter(
+            owner=request.user,
+            deleted_at__isnull=True,
+        ),
+        "deleted_quick_note": deleted_quick_note,
     })
 
 
 @login_required
 @require_POST
 def toggle_quick_note_pin(request, note_id):
-    quick_note = get_object_or_404(QuickNote, id=note_id, owner=request.user)
+    quick_note = get_object_or_404(
+        QuickNote,
+        id=note_id,
+        owner=request.user,
+        deleted_at__isnull=True,
+    )
     quick_note.is_pinned = not quick_note.is_pinned
     quick_note.save(update_fields=["is_pinned", "updated_at"])
     return _quick_note_redirect(request)
@@ -300,6 +319,27 @@ def toggle_quick_note_pin(request, note_id):
 @login_required
 @require_POST
 def delete_quick_note(request, note_id):
-    quick_note = get_object_or_404(QuickNote, id=note_id, owner=request.user)
-    quick_note.delete()
+    quick_note = get_object_or_404(
+        QuickNote,
+        id=note_id,
+        owner=request.user,
+        deleted_at__isnull=True,
+    )
+    quick_note.deleted_at = timezone.now()
+    quick_note.save(update_fields=["deleted_at"])
+    target = reverse("notes:quick_notes")
+    return redirect(f"{target}?quick_note_deleted={quick_note.id}")
+
+
+@login_required
+@require_POST
+def undo_delete_quick_note(request, note_id):
+    quick_note = get_object_or_404(
+        QuickNote,
+        id=note_id,
+        owner=request.user,
+        deleted_at__isnull=False,
+    )
+    quick_note.deleted_at = None
+    quick_note.save(update_fields=["deleted_at"])
     return _quick_note_redirect(request)

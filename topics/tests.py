@@ -8,7 +8,7 @@ from django.utils import timezone
 
 from flashcards.models import Flashcard
 from notes.models import Note
-from study.models import StudySession
+from study.models import StudySession, StudySessionSegment
 from users.models import UserPreferences
 
 from .models import Section, Subject, SubjectSubtitlePreset, Topic
@@ -132,6 +132,144 @@ class DashboardAndSearchTests(TestCase):
         self.assertEqual(chart[-2]["date"], yesterday.date())
         self.assertEqual(chart[-2]["minutes"], 10)
 
+    def test_dashboard_focus_by_area_uses_all_completed_time(self):
+        ended_at = timezone.now() - timedelta(days=15)
+        StudySession.objects.create(
+            user=self.user,
+            topic=self.topic,
+            section=self.section,
+            subject=self.subject,
+            started_at=ended_at - timedelta(minutes=50),
+            ended_at=ended_at,
+            duration_seconds=3000,
+            planned_duration_seconds=3000,
+            status="completed",
+            completed=True,
+        )
+
+        response = self.client.get(reverse("topics:home"))
+
+        topic_focus = response.context["focus_by_topic"][0]
+        self.assertEqual(response.context["week_minutes"], 0)
+        self.assertEqual(topic_focus["minutes"], 50)
+        self.assertEqual(topic_focus["detail"], "Biology 50m")
+        self.assertContains(response, "Balance &middot; all time", html=True)
+
+    def test_dashboard_rhythm_can_show_last_thirty_days(self):
+        ended_at = timezone.now() - timedelta(days=10)
+        StudySession.objects.create(
+            user=self.user,
+            topic=self.topic,
+            started_at=ended_at - timedelta(minutes=20),
+            ended_at=ended_at,
+            duration_seconds=1200,
+            planned_duration_seconds=1200,
+            status="completed",
+            completed=True,
+        )
+
+        response = self.client.get(reverse("topics:home"), {"rhythm": "30d"})
+
+        chart = response.context["rhythm_chart"]
+        chart_by_date = {item["date"]: item["minutes"] for item in chart}
+        self.assertEqual(response.context["rhythm_period"], "30d")
+        self.assertEqual(response.context["rhythm_total_minutes"], 20)
+        self.assertEqual(len(chart), 30)
+        self.assertEqual(chart_by_date[ended_at.date()], 20)
+        active_bucket = next(item for item in chart if item["date"] == ended_at.date())
+        self.assertEqual(active_bucket["breakdown"][0]["label"], "Science")
+        self.assertEqual(active_bucket["breakdown"][0]["duration"], "20 min")
+
+    def test_dashboard_rhythm_breakdown_uses_session_segments(self):
+        languages = Topic.objects.create(user=self.user, title="Languages")
+        ended_at = timezone.now() - timedelta(days=2)
+        session = StudySession.objects.create(
+            user=self.user,
+            topic=self.topic,
+            topic_title=self.topic.title,
+            started_at=ended_at - timedelta(minutes=25),
+            ended_at=ended_at,
+            duration_seconds=1500,
+            planned_duration_seconds=1500,
+            status="completed",
+            completed=True,
+        )
+        StudySessionSegment.objects.create(
+            session=session,
+            topic=self.topic,
+            topic_title=self.topic.title,
+            activity_type="reading",
+            duration_seconds=600,
+        )
+        StudySessionSegment.objects.create(
+            session=session,
+            topic=languages,
+            topic_title=languages.title,
+            activity_type="general",
+            started_offset_seconds=600,
+            duration_seconds=900,
+        )
+
+        response = self.client.get(reverse("topics:home"), {"rhythm": "30d"})
+
+        bucket = next(
+            item for item in response.context["rhythm_chart"]
+            if item["date"] == ended_at.date()
+        )
+        breakdown = {item["label"]: item["seconds"] for item in bucket["breakdown"]}
+        self.assertEqual(bucket["minutes"], 25)
+        self.assertEqual(breakdown, {"Languages": 900, "Science": 600})
+
+    def test_dashboard_rhythm_can_show_last_twelve_months(self):
+        ended_at = timezone.now() - timedelta(days=180)
+        StudySession.objects.create(
+            user=self.user,
+            topic=self.topic,
+            started_at=ended_at - timedelta(minutes=35),
+            ended_at=ended_at,
+            duration_seconds=2100,
+            planned_duration_seconds=2100,
+            status="completed",
+            completed=True,
+        )
+
+        response = self.client.get(reverse("topics:home"), {"rhythm": "year"})
+
+        self.assertEqual(response.context["rhythm_period"], "year")
+        self.assertEqual(response.context["rhythm_total_minutes"], 35)
+        self.assertEqual(len(response.context["rhythm_chart"]), 12)
+
+    def test_dashboard_uses_local_timezone_for_week_boundary(self):
+        preferences, _ = UserPreferences.objects.get_or_create(user=self.user)
+        preferences.timezone = "Asia/Almaty"
+        preferences.save(update_fields=["timezone"])
+        session_end = datetime(2026, 7, 19, 20, 22, tzinfo=datetime_timezone.utc)
+        StudySession.objects.create(
+            user=self.user,
+            topic=self.topic,
+            section=self.section,
+            subject=self.subject,
+            started_at=session_end - timedelta(minutes=15),
+            ended_at=session_end,
+            duration_seconds=900,
+            planned_duration_seconds=900,
+            status="completed",
+            completed=True,
+        )
+        fixed_now = datetime(2026, 7, 21, 12, 17, tzinfo=datetime_timezone.utc)
+
+        with patch("topics.views.timezone.now", return_value=fixed_now):
+            response = self.client.get(reverse("topics:home"))
+            analytics_response = self.client.get(reverse("topics:analytics"))
+
+        self.assertEqual(response.context["week_minutes"], 15)
+        self.assertEqual(response.context["week_sessions_count"], 1)
+        self.assertEqual(response.context["streak"], 1)
+        chart_by_date = {item["date"]: item["minutes"] for item in response.context["weekly_chart"]}
+        self.assertEqual(chart_by_date[datetime(2026, 7, 20).date()], 15)
+        self.assertEqual(chart_by_date[datetime(2026, 7, 19).date()], 0)
+        self.assertEqual(analytics_response.context["total_seconds"], 900)
+
     def test_search_finds_and_links_subject_flashcard(self):
         response = self.client.get(reverse("topics:search"), {"q": "mitosis"})
         self.assertEqual(response.status_code, 200)
@@ -184,6 +322,59 @@ class DashboardAndSearchTests(TestCase):
         self.assertContains(
             self.client.get(reverse("topics:subject_detail", args=[subject.id])),
             subject_description,
+        )
+
+    def test_learning_pages_show_the_full_breadcrumb_path(self):
+        dashboard_url = reverse("topics:home")
+        topic_url = reverse("topics:topic_detail", args=[self.topic.id])
+        section_url = reverse("topics:section_detail", args=[self.section.id])
+        subject_url = reverse("topics:subject_overview", args=[self.subject.id])
+
+        topic_response = self.client.get(topic_url)
+        self.assertContains(topic_response, 'aria-label="Learning path"')
+        self.assertContains(
+            topic_response,
+            f'href="{dashboard_url}" class="learning-breadcrumb-link"',
+        )
+        self.assertContains(
+            topic_response,
+            '<span class="learning-breadcrumb-current" aria-current="page">Science</span>',
+            html=True,
+        )
+
+        section_response = self.client.get(section_url)
+        self.assertContains(
+            section_response,
+            f'href="{topic_url}" class="learning-breadcrumb-link"',
+        )
+        self.assertContains(
+            section_response,
+            '<span class="learning-breadcrumb-current" aria-current="page">Biology</span>',
+            html=True,
+        )
+
+        overview_response = self.client.get(subject_url)
+        self.assertContains(
+            overview_response,
+            f'href="{section_url}" class="learning-breadcrumb-link"',
+        )
+        self.assertContains(
+            overview_response,
+            '<span class="learning-breadcrumb-current" aria-current="page">Cells</span>',
+            html=True,
+        )
+
+        notes_response = self.client.get(
+            reverse("topics:subject_detail", args=[self.subject.id])
+        )
+        self.assertContains(
+            notes_response,
+            f'href="{subject_url}" class="learning-breadcrumb-link"',
+        )
+        self.assertContains(
+            notes_response,
+            '<span class="learning-breadcrumb-current" aria-current="page">Notes</span>',
+            html=True,
         )
 
     def test_section_and_subject_descriptions_can_be_edited(self):
@@ -351,6 +542,202 @@ class DashboardAndSearchTests(TestCase):
         self.assertContains(self.client.get(section_url), "0 of 1 mastered")
         self.client.get(reverse("topics:toggle_subject", args=[self.subject.id]))
         self.assertContains(self.client.get(section_url), "1 of 1 mastered")
+
+    def test_mastering_subject_only_changes_completion_state(self):
+        response = self.client.get(
+            reverse("topics:toggle_subject", args=[self.subject.id]),
+            follow=True,
+        )
+
+        self.subject.refresh_from_db()
+        self.assertTrue(self.subject.completed)
+        self.assertNotContains(response, f"Add time spent on {self.subject.title}?")
+        self.assertFalse(StudySession.objects.exists())
+
+    def test_manual_subject_time_is_saved_as_completed_hierarchical_focus(self):
+        response = self.client.post(
+            reverse("topics:log_subject_time", args=[self.subject.id]),
+            {
+                "focus_date": timezone.localdate().isoformat(),
+                "hours": "1",
+                "minutes": "30",
+            },
+        )
+
+        self.assertRedirects(
+            response,
+            reverse("topics:subject_overview", args=[self.subject.id])
+            + "?manage_time=1#manual-focus-time",
+        )
+        session = StudySession.objects.get(entry_source="manual")
+        self.assertEqual(session.user, self.user)
+        self.assertEqual(session.topic, self.topic)
+        self.assertEqual(session.section, self.section)
+        self.assertEqual(session.subject, self.subject)
+        self.assertEqual(session.activity_type, "general")
+        self.assertEqual(session.duration_seconds, 90 * 60)
+        self.assertEqual(session.ended_at - session.started_at, timedelta(minutes=90))
+        self.assertTrue(session.completed)
+        self.assertEqual(session.status, "completed")
+
+        section_page = self.client.get(
+            reverse("topics:section_detail", args=[self.section.id])
+        )
+        self.assertEqual(section_page.context["section"].focus_duration, "1 h 30 min")
+        self.assertEqual(
+            section_page.context["subjects"][0].focus_duration,
+            "1 h 30 min",
+        )
+
+        dashboard = self.client.get(reverse("topics:home"))
+        self.assertContains(dashboard, "Manually logged")
+        self.assertEqual(dashboard.context["today_minutes"], 90)
+
+    def test_manual_subject_time_rejects_invalid_values(self):
+        log_url = reverse("topics:log_subject_time", args=[self.subject.id])
+
+        response = self.client.post(
+            log_url,
+            {
+                "focus_date": timezone.localdate().isoformat(),
+                "hours": "0",
+                "minutes": "60",
+            },
+            follow=True,
+        )
+
+        self.assertFalse(StudySession.objects.exists())
+        self.assertContains(response, "Minutes must be from 0 to 59")
+        self.assertTrue(response.context["manage_time_open"])
+
+    def test_manual_subject_time_can_be_edited_and_deleted(self):
+        ended_at = timezone.now() - timedelta(days=2)
+        session = StudySession.objects.create(
+            user=self.user,
+            topic=self.topic,
+            section=self.section,
+            subject=self.subject,
+            started_at=ended_at - timedelta(hours=2),
+            ended_at=ended_at,
+            duration_seconds=2 * 60 * 60,
+            status="completed",
+            completed=True,
+            activity_type="general",
+            entry_source="manual",
+        )
+
+        edit_response = self.client.post(
+            reverse(
+                "topics:edit_subject_time",
+                args=[self.subject.id, session.id],
+            ),
+            {
+                "focus_date": timezone.localdate().isoformat(),
+                "hours": "0",
+                "minutes": "45",
+            },
+        )
+
+        self.assertRedirects(
+            edit_response,
+            reverse("topics:subject_overview", args=[self.subject.id])
+            + "?manage_time=1#manual-focus-time",
+        )
+        session.refresh_from_db()
+        self.assertEqual(session.duration_seconds, 45 * 60)
+        overview = self.client.get(
+            reverse("topics:subject_overview", args=[self.subject.id])
+        )
+        self.assertContains(overview, "45 min")
+        self.assertContains(overview, "Manage focused time")
+
+        delete_response = self.client.post(
+            reverse(
+                "topics:delete_subject_time",
+                args=[self.subject.id, session.id],
+            )
+        )
+        self.assertRedirects(
+            delete_response,
+            reverse("topics:subject_overview", args=[self.subject.id])
+            + "?manage_time=1#manual-focus-time",
+        )
+        self.assertFalse(StudySession.objects.filter(id=session.id).exists())
+
+    def test_timer_session_cannot_be_edited_as_manual_time(self):
+        session = StudySession.objects.create(
+            user=self.user,
+            topic=self.topic,
+            section=self.section,
+            subject=self.subject,
+            started_at=timezone.now() - timedelta(minutes=25),
+            ended_at=timezone.now(),
+            duration_seconds=25 * 60,
+            status="completed",
+            completed=True,
+            entry_source="timer",
+        )
+
+        response = self.client.post(
+            reverse(
+                "topics:edit_subject_time",
+                args=[self.subject.id, session.id],
+            ),
+            {
+                "focus_date": timezone.localdate().isoformat(),
+                "hours": "1",
+                "minutes": "0",
+            },
+        )
+
+        self.assertEqual(response.status_code, 404)
+        session.refresh_from_db()
+        self.assertEqual(session.duration_seconds, 25 * 60)
+
+    def test_manual_subject_time_cannot_be_added_to_another_users_subject(self):
+        other_user = get_user_model().objects.create_user(
+            username="private-learner",
+            password="test-pass-456",
+        )
+        other_topic = Topic.objects.create(user=other_user, title="Private")
+        other_section = Section.objects.create(topic=other_topic, title="Private section")
+        other_subject = Subject.objects.create(
+            section=other_section,
+            title="Private subject",
+        )
+
+        response = self.client.post(
+            reverse("topics:log_subject_time", args=[other_subject.id]),
+            {"hours": "1", "minutes": "0"},
+        )
+
+        self.assertEqual(response.status_code, 404)
+        self.assertFalse(StudySession.objects.exists())
+
+    def test_unmastering_subject_does_not_delete_logged_time_or_reopen_prompt(self):
+        self.subject.completed = True
+        self.subject.save(update_fields=["completed"])
+        StudySession.objects.create(
+            user=self.user,
+            topic=self.topic,
+            section=self.section,
+            subject=self.subject,
+            started_at=timezone.now() - timedelta(minutes=20),
+            ended_at=timezone.now(),
+            duration_seconds=20 * 60,
+            status="completed",
+            completed=True,
+            entry_source="manual",
+        )
+
+        response = self.client.get(
+            reverse("topics:toggle_subject", args=[self.subject.id]),
+            follow=True,
+        )
+
+        self.subject.refresh_from_db()
+        self.assertFalse(self.subject.completed)
+        self.assertEqual(StudySession.objects.count(), 1)
 
     def test_mastered_subject_moves_below_active_subjects_even_when_pinned(self):
         active_subject = Subject.objects.create(section=self.section, title="Organelles")

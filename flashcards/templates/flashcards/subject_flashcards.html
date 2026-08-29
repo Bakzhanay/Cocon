@@ -3,7 +3,7 @@
 
 {% block content %}
 <div class="flashcard-page">
-    <a href="{% url 'topics:section_detail' subject.section.id %}" class="back-link">&larr; Back to section</a>
+    {% include "includes/learning_breadcrumbs.html" with topic=subject.section.topic section=subject.section subject=subject current_label="Flashcards" %}
     <header class="flashcard-page-header">
         <div>
             <span class="dashboard-eyebrow">{{ subject.section.topic.title }} / {{ subject.section.title }}</span>
@@ -15,6 +15,7 @@
             <a href="{% url 'topics:subject_detail' subject.id %}" class="toolbar-btn">Notes</a>
             <a href="{% url 'flashcards:shuffle_subject_flashcards' subject.id %}" class="toolbar-btn">Shuffle</a>
             <a href="{% url 'flashcards:restore_subject_flashcards' subject.id %}" class="toolbar-btn">Original order</a>
+            <a href="{% url 'flashcards:bulk_add_subject_flashcards' subject.id %}" class="toolbar-btn">Bulk add</a>
             <a href="{% url 'flashcards:add_subject_flashcard' subject.id %}" class="toolbar-btn primary">+ Add flashcard</a>
         </div>
     </header>
@@ -34,7 +35,7 @@
         {% for card in learned_cards %}{% include "flashcards/_flashcard.html" %}{% endfor %}
     </div>
     {% else %}
-    <div class="flashcard-empty"><strong>No flashcards yet</strong><p>Create the first card for {{ subject.title }}.</p><a href="{% url 'flashcards:add_subject_flashcard' subject.id %}">Add flashcard</a></div>
+    <div class="flashcard-empty"><strong>No flashcards yet</strong><p>Create one card, or paste a complete AI-generated deck at once.</p><a href="{% url 'flashcards:bulk_add_subject_flashcards' subject.id %}">Bulk add flashcards</a></div>
     {% endif %}
 </div>
 <script src="{% static 'js/flashcards.js' %}?v=2"></script>

@@ -2,10 +2,14 @@ import json
 from datetime import datetime
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
+from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.core.paginator import Paginator
 from django.db import transaction
 from django.http import JsonResponse
+from django.shortcuts import redirect, render
 from django.utils import timezone
+from django.views.decorators.http import require_POST
 
 from topics.models import Section, Subject, Topic
 from users.models import UserPreferences
@@ -34,6 +38,14 @@ def _user_local_date(user):
     except ZoneInfoNotFoundError:
         user_timezone = ZoneInfo("UTC")
     return timezone.now().astimezone(user_timezone).date()
+
+
+def _user_timezone(user):
+    preferences, _ = UserPreferences.objects.get_or_create(user=user)
+    try:
+        return ZoneInfo(preferences.timezone)
+    except ZoneInfoNotFoundError:
+        return ZoneInfo("UTC")
 
 
 class StudyContextError(ValueError):
@@ -87,6 +99,30 @@ def _resolve_study_context(user, *, topic_id=None, section_id=None, subject_id=N
 def _valid_activity_type(value):
     valid_activity_types = {choice[0] for choice in StudySession.ACTIVITY_CHOICES}
     return value if value in valid_activity_types else "general"
+
+
+def _context_payload(topic, section, subject, activity_type):
+    parts = []
+    if topic:
+        parts.append(topic.title)
+    if section:
+        parts.append(section.title)
+    if subject:
+        parts.append(subject.title)
+    if activity_type == "notes":
+        parts.append("Notes")
+    elif activity_type == "flashcards":
+        parts.append("Flashcards")
+    elif activity_type == "reading":
+        parts.append("Reading")
+
+    return {
+        "topic_id": topic.id if topic else None,
+        "section_id": section.id if section else None,
+        "subject_id": subject.id if subject else None,
+        "activity_type": activity_type,
+        "label": " / ".join(parts) if parts else "General study",
+    }
 
 
 def _segment_matches(segment, *, topic, section, subject, activity_type):
@@ -265,6 +301,7 @@ def start_session(request):
         "success": True,
         "session_id": session.id,
         "task": task_progress_payload(task) if task else None,
+        "context": _context_payload(topic, section, subject, activity_type),
     })
 
 
@@ -324,7 +361,11 @@ def sync_session_context(request):
         subject=subject,
         activity_type=activity_type,
     ):
-        return JsonResponse({"success": True, "changed": False})
+        return JsonResponse({
+            "success": True,
+            "changed": False,
+            "context": _context_payload(topic, section, subject, activity_type),
+        })
 
     _close_current_segment(session, elapsed_seconds)
     _create_segment(
@@ -352,7 +393,11 @@ def sync_session_context(request):
         "section_title",
         "subject_title",
     ])
-    return JsonResponse({"success": True, "changed": True})
+    return JsonResponse({
+        "success": True,
+        "changed": True,
+        "context": _context_payload(topic, section, subject, activity_type),
+    })
 
 
 @login_required
@@ -505,7 +550,58 @@ def activity(request):
             "missed": task["due_date"] < local_today and not task["completed"],
         })
 
+    completed_tasks = {}
+    for completed_at in Task.objects.filter(
+        user=request.user,
+        completed=True,
+        completed_at__gte=month_start,
+        completed_at__lt=next_month,
+    ).values_list("completed_at", flat=True):
+        if not completed_at:
+            continue
+        date_key = completed_at.astimezone(user_timezone).date().isoformat()
+        item = completed_tasks.setdefault(date_key, {"date": date_key, "count": 0})
+        item["count"] += 1
+
     return JsonResponse({
         "days": [days[key] for key in sorted(days)],
         "tasks": tasks,
+        "completed_tasks": [
+            completed_tasks[key]
+            for key in sorted(completed_tasks)
+        ],
     })
+
+
+@login_required
+def session_history(request):
+    sessions = (
+        StudySession.objects
+        .filter(user=request.user, completed=True, status="completed")
+        .select_related("topic", "section", "subject")
+        .order_by("-ended_at", "-id")
+    )
+    paginator = Paginator(sessions, 25)
+    page = paginator.get_page(request.GET.get("page"))
+    return render(
+        request,
+        "study/session_history.html",
+        {
+            "session_page": page,
+            "session_total": paginator.count,
+            "user_timezone_name": getattr(_user_timezone(request.user), "key", "UTC"),
+        },
+    )
+
+
+@login_required
+@require_POST
+def clear_dashboard_activity(request):
+    preferences, _ = UserPreferences.objects.get_or_create(user=request.user)
+    preferences.dashboard_activity_hidden_before = timezone.now()
+    preferences.save(update_fields=["dashboard_activity_hidden_before"])
+    messages.success(
+        request,
+        "Recent activity cleared from the dashboard. Your history and statistics are still saved.",
+    )
+    return redirect("topics:home")

@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="form-page bulk-flashcard-page">
+    <div class="form-card bulk-flashcard-card">
+        <header class="bulk-flashcard-heading">
+            <div>
+                <span class="form-eyebrow">Build a deck without repetitive typing</span>
+                <h1>Bulk add flashcards</h1>
+                <p class="form-subtitle">
+                    {% if subject %}
+                        {{ subject.section.topic.title }} / {{ subject.section.title }} / <strong>{{ subject.title }}</strong>
+                    {% else %}
+                        {{ section.topic.title }} / <strong>{{ section.title }}</strong>
+                    {% endif %}
+                </p>
+            </div>
+            <a href="{% if subject %}{% url 'flashcards:add_subject_flashcard' subject.id %}{% else %}{% url 'flashcards:add_section_flashcard' section.id %}{% endif %}"
+               class="secondary-btn">Add one instead</a>
+        </header>
+
+        <section class="bulk-flashcard-guide">
+            <div>
+                <span class="bulk-step-number">1</span>
+                <div>
+                    <strong>Ask an AI for this simple format</strong>
+                    <p>Question, answer, and notes may contain multiple paragraphs. Notes are optional. Put <code>---</code> between cards.</p>
+                </div>
+            </div>
+            <button type="button"
+                    class="secondary-btn bulk-copy-prompt"
+                    data-bulk-copy-prompt
+                    data-context-title="{{ title }}">Copy AI prompt</button>
+            <pre>Question: What is photosynthesis?
+Answer: Photosynthesis is the process by which plants convert light energy into chemical energy.
+The explanation can continue on another line or paragraph.
+Notes: It takes place mainly in chloroplasts.
+---
+Question: Which pigment absorbs light?
+Answer: Chlorophyll.</pre>
+        </section>
+
+        <form method="post" id="bulkFlashcardForm">
+            {% csrf_token %}
+            {{ form.entries }}
+            {{ form.preview_ready }}
+
+            {% if form.non_field_errors %}<div class="form-errors">{{ form.non_field_errors }}</div>{% endif %}
+
+            <div class="form-group">
+                <label for="{{ form.source_entries.id_for_label }}">Paste your flashcards</label>
+                {{ form.source_entries }}
+                <small class="form-hint">There is no character limit for an individual question, answer, or note. Up to 200 cards can be added in one batch.</small>
+                {{ form.source_entries.errors }}
+            </div>
+
+            <section class="bulk-flashcard-preview" aria-live="polite">
+                <header class="bulk-preview-heading">
+                    <div>
+                        <span class="bulk-step-number">2</span>
+                        <div>
+                            <strong>Review every card before saving</strong>
+                            <p>Edit long text freely or remove a card you do not want.</p>
+                        </div>
+                    </div>
+                    <span id="bulkFlashcardCount">0 cards</span>
+                </header>
+                <div class="bulk-preview-empty" id="bulkFlashcardPreviewEmpty">
+                    Paste the formatted deck above to see an editable preview.
+                </div>
+                <div class="bulk-flashcard-preview-list" id="bulkFlashcardPreviewList"></div>
+            </section>
+
+            <noscript><div class="page-message">The editable preview requires JavaScript.</div></noscript>
+
+            <div class="form-actions">
+                <button type="submit" class="primary-btn">Add flashcards</button>
+                <a href="{% if subject %}{% url 'flashcards:subject_flashcards' subject.id %}{% else %}{% url 'flashcards:section_flashcards' section.id %}{% endif %}"
+                   class="secondary-btn">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{% static 'js/bulk_flashcard_editor.js' %}?v=1"></script>
+{% endblock %}
