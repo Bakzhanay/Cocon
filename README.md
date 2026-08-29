@@ -38,7 +38,7 @@ Many standard tools demand constant setup, feature overwhelming interfaces full 
 
 *Cocon* connects every piece of your education into a single, cohesive workflow so you never have to waste time wondering what to do next or where you put your materials:
 
-- Topics & Sections: High-level domains (like IMAT, Programming, Languages, or Musical Instruments) broken down into targeted sub-domains (e.g., Biology, Python, Dombra).
+- Topics & Sections: High-level domains (like IMAT, Programming, Languages, or Musical Instruments) broken down into targeted sub-domains (e.g., Biology, Python, Guitar).
 
 - Subjects & Practical Execution: Step-by-step topics, syllabi, and mini-projects where you check off milestones as you build real skills.
 
