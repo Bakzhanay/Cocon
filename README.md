@@ -8,9 +8,9 @@
   A calm, low-stimulation study workspace built to conquer sensory overload, eliminate decision fatigue, and transform scattered focus into structured, measurable progress.
 </p>
 
-![Cocon dashboard with focus analytics, Pomodoro timer, and study navigation](docs/images/cocon-dashboard.png)
+<img width="1920" height="878" alt="Снимок экрана (968)" src="https://github.com/user-attachments/assets/cf4c32bb-9fd7-427d-8e6e-f1ce93ec865c" />
 
-<img width="1920" height="873" alt="dark_mode" src="https://github.com/user-attachments/assets/e7db34b0-b80c-4f02-8a45-4f76e93f5983" />
+<img width="1920" height="881" alt="Снимок экрана (969)" src="https://github.com/user-attachments/assets/4ed7d132-272d-42f0-a896-00a2f333b855" />
 
 Cocon helps organize learning materials, plan the next step, and understand
 where focused time actually goes.
