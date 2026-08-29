@@ -8,9 +8,9 @@
   A calm, low-stimulation study workspace built to conquer sensory overload, eliminate decision fatigue, and transform scattered focus into structured, measurable progress.
 </p>
 
-<img width="1920" height="878" alt="Снимок экрана (968)" src="https://github.com/user-attachments/assets/cf4c32bb-9fd7-427d-8e6e-f1ce93ec865c" />
+<img width="1920" height="875" alt="Снимок экрана (968)" src="https://github.com/user-attachments/assets/c5614455-6711-40dc-9081-44865f97a8d5" />
 
-<img width="1920" height="881" alt="Снимок экрана (969)" src="https://github.com/user-attachments/assets/4ed7d132-272d-42f0-a896-00a2f333b855" />
+<img width="1920" height="871" alt="Снимок экрана (969)" src="https://github.com/user-attachments/assets/182c40b3-56c1-41a6-a5b3-55fd5419f26c" />
 
 Cocon helps organize learning materials, plan the next step, and understand
 where focused time actually goes.
